@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raport Tickete</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--pr:#4a90e2;--bg:#f5f5f1;--su:#fff;--tx:#1a1a1a;--t2:#666;--br:#ddd}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a1a;--su:#2d2d2d;--tx:#fff;--t2:#999;--br:#444}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);padding:16px}
+.wrap{max-width:1200px;margin:0 auto}
+h1{text-align:center;font-size:26px;color:var(--pr);margin-bottom:20px}
+
+/* Stats */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.sc{background:var(--su);padding:16px;border-radius:8px;border:1px solid var(--br);text-align:center;cursor:pointer;transition:all .2s}
+.sc:hover{border-color:var(--pr);transform:translateY(-1px)}
+.sc.active{border-color:var(--pr);background:rgba(74,144,226,.08)}
+.sv{font-size:26px;font-weight:700;color:var(--pr)}
+.sl{font-size:11px;color:var(--t2);margin-top:6px;text-transform:uppercase}
+
+/* Tipuri */
+.ts{margin-bottom:20px}
+.tt{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.tg{display:grid;grid-template-columns:repeat(auto-fill,minmax(85px,1fr));gap:8px}
+.tc{background:var(--su);padding:10px;border-radius:6px;border:1px solid var(--br);text-align:center;cursor:pointer;transition:all .2s}
+.tc:hover{border-color:var(--pr);transform:translateY(-1px)}
+.tc.active{border-color:var(--pr);background:rgba(74,144,226,.12);box-shadow:0 0 0 2px rgba(74,144,226,.3)}
+.tv{font-size:20px;font-weight:700;color:var(--pr)}
+.tl{font-size:11px;color:var(--t2);margin-top:4px}
+
+/* Filter bar */
+.fbar{display:none;background:rgba(74,144,226,.08);border:1px solid rgba(74,144,226,.3);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;align-items:center;justify-content:space-between;gap:8px}
+.fbar.show{display:flex}
+.fbar span{color:var(--pr);font-weight:500}
+.fbar button{background:none;border:1px solid var(--pr);border-radius:6px;padding:4px 10px;color:var(--pr);cursor:pointer;font-size:12px}
+.fbar button:hover{background:var(--pr);color:#fff}
+
+/* Tabel */
+.tw{background:var(--su);border-radius:8px;border:1px solid var(--br);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:rgba(74,144,226,.05);position:sticky;top:0;z-index:5}
+th{padding:10px 12px;text-align:left;font-weight:600;color:var(--pr);border-bottom:1px solid var(--br);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--br)}
+tr:hover td{background:rgba(74,144,226,.05)}
+.tlink{color:var(--pr);cursor:pointer;font-weight:700;text-decoration:underline}
+.cp{cursor:pointer}
+.cp:hover{background:rgba(74,144,226,.08)}
+.copied{background:rgba(76,175,80,.2)!important;color:#4caf50!important}
+.no-results{text-align:center;padding:30px;color:var(--t2);font-style:italic}
+
+/* Panel detalii */
+#ov{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:100;justify-content:center;align-items:center;padding:16px}
+#ov.show{display:flex}
+#pan{background:var(--su);border-radius:12px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.ph{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--br);position:sticky;top:0;background:var(--su);z-index:1}
+.ph h2{font-size:15px;color:var(--pr)}
+.xb{background:none;border:none;font-size:20px;cursor:pointer;color:var(--t2);padding:2px 6px;border-radius:4px;line-height:1}
+.xb:hover{background:var(--br)}
+.pb{padding:14px 18px}
+.fr{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--br);align-items:flex-start}
+.fr:last-child{border-bottom:none}
+.fl{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.3px;min-width:125px;flex-shrink:0;padding-top:2px}
+.fv{font-size:14px;line-height:1.5;word-break:break-word;cursor:pointer;flex:1;color:var(--tx)}
+.fv:hover{color:var(--pr)}
+.fv.em{color:var(--t2);font-style:italic;cursor:default}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;background:rgba(74,144,226,.15);color:var(--pr);font-weight:500}
+.msg{text-align:center;padding:60px;color:var(--t2);font-size:18px}
+.er{color:#f44336}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎫 Raport Tickete</h1>
+  <div id="root"><div class="msg">⏳ Se încarcă...</div></div>
+</div>
+
+<div id="ov">
+  <div id="pan">
+    <div class="ph">
+      <h2 id="ptitle">Detalii</h2>
+      <button class="xb" id="xbtn">✕</button>
+    </div>
+    <div class="pb" id="pbody"></div>
+  </div>
+</div>
+
+<script>
+var DATA = [];
+var filteredData = [];
+var activeType = null;
+var activeLoc = null;
+
+// Inchidere overlay
+document.getElementById('xbtn').onclick = function(){ document.getElementById('ov').className = ''; };
+document.getElementById('ov').onclick = function(e){ if(e.target===this) this.className=''; };
+
+function cp(txt, el) {
+  var done = function(){ el.classList.add('copied'); setTimeout(function(){ el.classList.remove('copied'); }, 700); };
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(done).catch(function(){fb(txt);done();});
+  } else { fb(txt); done(); }
+}
+function fb(txt){
+  var t=document.createElement('textarea');
+  t.value=txt; t.style.position='fixed'; t.style.opacity='0';
+  document.body.appendChild(t); t.focus(); t.select();
+  try{document.execCommand('copy');}catch(e){}
+  document.body.removeChild(t);
+}
+function s(v){ return v||''; }
+
+function applyFilter() {
+  filteredData = DATA.filter(function(r) {
+    var okType = !activeType || (r.ty||'?') === activeType;
+    var okLoc  = !activeLoc  || (r.l||'')  === activeLoc;
+    return okType && okLoc;
+  });
+  renderTable();
+  renderFilterBar();
+}
+
+function renderFilterBar() {
+  var bar = document.getElementById('fbar');
+  if (!bar) return;
+  var parts = [];
+  if (activeType) parts.push('Tip: <strong>' + activeType + '</strong>');
+  if (activeLoc)  parts.push('Localitate: <strong>' + activeLoc + '</strong>');
+  if (parts.length > 0) {
+    bar.className = 'fbar show';
+    document.getElementById('fbar-text').innerHTML = '🔍 Filtru activ — ' + parts.join(' &nbsp;|&nbsp; ') + ' &nbsp;(' + filteredData.length + ' tickete)';
+  } else {
+    bar.className = 'fbar';
+  }
+}
+
+function renderTable() {
+  var rows = '';
+  for(var i=0; i<filteredData.length; i++){
+    var r = filteredData[i];
+    var origIdx = DATA.indexOf(r);
+    rows += '<tr>' +
+      '<td><span class="tlink" data-idx="'+origIdx+'">'+s(r.t)+'</span></td>' +
+      '<td class="cp">'+s(r.a)+'</td>' +
+      '<td class="cp">'+s(r.b)+'</td>' +
+      '<td class="cp loc-cell" data-loc="'+s(r.l)+'">'+s(r.l)+'</td>' +
+      '<td class="cp">'+s(r.ty)+'</td>' +
+      '<td class="cp">'+s(r.d)+'</td>' +
+      '<td class="cp">'+s(r.dp)+'</td>' +
+    '</tr>';
+  }
+  if (!rows) rows = '<tr><td colspan="7" class="no-results">Nu există tickete pentru acest filtru</td></tr>';
+
+  var tbody = document.querySelector('#root table tbody');
+  if (tbody) tbody.innerHTML = rows;
+
+  attachTableEvents();
+
+  // Attach loc and type card events
+  setTimeout(function() {
+    document.querySelectorAll('.lc').forEach(function(el) {
+      el.onclick = function() { toggleLoc(el.getAttribute('data-loc')); };
+    });
+    document.querySelectorAll('.tc').forEach(function(el) {
+      el.onclick = function() { toggleType(el.getAttribute('data-type')); };
+    });
+  }, 0);
+}
+
+function attachTableEvents() {
+  var links = document.querySelectorAll('.tlink');
+  for(var i=0; i<links.length; i++){
+    (function(el){
+      el.onclick = function(){ openPanel(parseInt(el.getAttribute('data-idx'))); };
+    })(links[i]);
+  }
+  var cells = document.querySelectorAll('td.cp');
+  for(var i=0; i<cells.length; i++){
+    (function(el){
+      el.onclick = function(){ cp(el.textContent||el.innerText, el); };
+    })(cells[i]);
+  }
+}
+
+function toggleType(type) {
+  activeType = (activeType === type) ? null : type;
+  // Update visual state
+  var tcs = document.querySelectorAll('.tc');
+  for(var i=0; i<tcs.length; i++){
+    tcs[i].className = 'tc' + (tcs[i].getAttribute('data-type') === activeType ? ' active' : '');
+  }
+  applyFilter();
+}
+
+function toggleLoc(loc) {
+  activeLoc = (activeLoc === loc) ? null : loc;
+  var lcs = document.querySelectorAll('.lc');
+  for(var i=0; i<lcs.length; i++){
+    lcs[i].className = 'sc lc' + (lcs[i].getAttribute('data-loc') === activeLoc ? ' active' : '');
+  }
+  applyFilter();
+}
+
+function clearFilters() {
+  activeType = null;
+  activeLoc = null;
+  var tcs = document.querySelectorAll('.tc');
+  for(var i=0;i<tcs.length;i++) tcs[i].classList.remove('active');
+  var lcs = document.querySelectorAll('.lc');
+  for(var i=0;i<lcs.length;i++) lcs[i].classList.remove('active');
+  applyFilter();
+}
+
+function openPanel(i){
+  var r = DATA[i];
+  if(!r) return;
+  document.getElementById('ptitle').textContent = 'Ticket #' + s(r.t);
+  var fields = [
+    ['Numar ticket', r.t, false],
+    ['Account', r.a, false],
+    ['Beneficiara', r.b, false],
+    ['Obiectiv', r.ob, false],
+    ['Localitate', r.l, false],
+    ['Adresa', r.ad, false],
+    ['Judet', r.j, false],
+    ['Tip ticket', r.ty, true],
+    ['Data initiere', r.d, false],
+    ['Data programata', r.dp, false],
+    ['Nota', r.n, false]
+  ];
+  var html = '';
+  for(var k=0; k<fields.length; k++){
+    var lbl=fields[k][0], val=s(fields[k][1]), badge=fields[k][2], valHtml;
+    if(!val){
+      valHtml='<span class="fv em">—</span>';
+    } else if(badge){
+      valHtml='<span class="fv"><span class="badge">'+val+'</span></span>';
+    } else {
+      var esc=val.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/\n/g,'<br>');
+      valHtml='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+esc+'</span>';
+    }
+    html+='<div class="fr"><span class="fl">'+lbl+'</span>'+valHtml+'</div>';
+  }
+  document.getElementById('pbody').innerHTML = html;
+  var fvs = document.querySelectorAll('#pbody .fv[data-val]');
+  for(var i=0; i<fvs.length; i++){
+    (function(el){ el.onclick=function(){ cp(el.getAttribute('data-val'),el); }; })(fvs[i]);
+  }
+  document.getElementById('ov').className = 'show';
+}
+
+function render(data){
+  DATA = data;
+  filteredData = data;
+  if(!data||!data.length){ document.getElementById('root').innerHTML='<div class="msg er">❌ Nu există date</div>'; return; }
+
+  var acc={}, loc={}, cnt={};
+  for(var i=0;i<data.length;i++){
+    var r=data[i];
+    if(r.a) acc[r.a]=1;
+    if(r.l) loc[r.l]=1;
+    var t=r.ty||'?';
+    cnt[t]=(cnt[t]||0)+1;
+  }
+
+  // Localitati sortate
+  var locs = Object.keys(loc).sort();
+  var locsHtml = '';
+  for(var i=0;i<locs.length;i++){
+    var lcount = data.filter(function(r){ return r.l===locs[i]; }).length;
+    locsHtml += '<div class="sc lc" data-loc="'+locs[i]+'">' +
+      '<div class="sv">'+lcount+'</div><div class="sl">'+locs[i]+'</div></div>';
+  }
+
+  // Tipuri sortate
+  var types=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a];});
+  var tgHtml='';
+  for(var i=0;i<types.length;i++){
+    tgHtml+='<div class="tc" data-type="'+types[i]+'">' +
+      '<div class="tv">'+cnt[types[i]]+'</div><div class="tl">'+types[i]+'</div></div>';
+  }
+
+  var rows='';
+  for(var i=0;i<data.length;i++){
+    var r=data[i];
+    rows+='<tr>'+
+      '<td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span></td>'+
+      '<td class="cp">'+s(r.a)+'</td>'+
+      '<td class="cp">'+s(r.b)+'</td>'+
+      '<td class="cp">'+s(r.l)+'</td>'+
+      '<td class="cp">'+s(r.ty)+'</td>'+
+      '<td class="cp">'+s(r.d)+'</td>'+
+      '<td class="cp">'+s(r.dp)+'</td>'+
+    '</tr>';
+  }
+
+  document.getElementById('root').innerHTML =
+    '<div class="stats" style="grid-template-columns:repeat(3,1fr);margin-bottom:8px">'+
+      '<div class="sc"><div class="sv">'+data.length+'</div><div class="sl">Total Tickete</div></div>'+
+      '<div class="sc"><div class="sv">'+Object.keys(acc).length+'</div><div class="sl">Conturi</div></div>'+
+      '<div class="sc"><div class="sv">'+locs.length+'</div><div class="sl">Localități</div></div>'+
+    '</div>'+
+    '<div class="ts" style="margin-bottom:8px"><div class="tt">Localități — click pentru filtrare</div><div class="tg">'+locsHtml+'</div></div>'+
+    '<div class="ts"><div class="tt">Tipuri de Tickete — click pentru filtrare</div><div class="tg">'+tgHtml+'</div></div>'+
+    '<div class="fbar" id="fbar"><span id="fbar-text"></span><button onclick="clearFilters()">✕ Elimină filtru</button></div>'+
+    '<div class="tw"><table>'+
+      '<thead><tr><th>Ticket</th><th>Account</th><th>Beneficiara</th><th>Localitate</th><th>Tip</th><th>Data initiere</th><th>Data programata</th></tr></thead>'+
+      '<tbody>'+rows+'</tbody>'+
+    '</table></div>';
+
+  attachTableEvents();
+}
+
+function load(){
+  var bid;
+  try{ bid=new URLSearchParams(window.location.search).get('bin'); }
+  catch(e){ var m=window.location.search.match(/[?&]bin=([^&]+)/); bid=m?m[1]:null; }
+  if(!bid){ document.getElementById('root').innerHTML='<div class="msg er">❌ Link invalid</div>'; return; }
+  var xhr=new XMLHttpRequest();
+  xhr.open('GET','https://api.jsonbin.io/v3/b/'+bid+'/latest',true);
+  xhr.onreadystatechange=function(){
+    if(xhr.readyState!==4) return;
+    if(xhr.status===200){
+      try{ render(JSON.parse(xhr.responseText).record.data); }
+      catch(e){ document.getElementById('root').innerHTML='<div class="msg er">❌ Eroare: '+e.message+'</div>'; }
+    } else {
+      document.getElementById('root').innerHTML='<div class="msg er">❌ Link expirat ('+xhr.status+')</div>';
+    }
+  };
+  xhr.onerror=function(){ document.getElementById('root').innerHTML='<div class="msg er">❌ Eroare conexiune</div>'; };
+  xhr.send();
+}
+load();
+</script>
+</body>
+</html>
