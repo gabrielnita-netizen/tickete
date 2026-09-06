@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <title>Tickete - Raport</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --primary: #4a90e2; --bg: #f5f5f1; --surface: #fff; --text: #1a1a1a; --text2: #666; --border: #ddd; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a1a; --surface: #2d2d2d; --text: #fff; --text2: #999; --border: #444; } }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 24px; }
+    .header h1 { font-size: 28px; color: var(--primary); margin-bottom: 8px; }
+    .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 16px; }
+    .stat-card { background: var(--surface); padding: 16px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 12px; color: var(--text2); margin-top: 8px; text-transform: uppercase; }
+    .types-section { margin-bottom: 24px; }
+    .types-title { font-size: 12px; margin-bottom: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+    .types-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+    .type-card { background: var(--surface); padding: 10px; border-radius: 6px; border: 1px solid var(--border); text-align: center; }
+    .type-value { font-size: 20px; font-weight: 700; color: var(--primary); }
+    .type-label { font-size: 11px; color: var(--text2); margin-top: 4px; text-transform: capitalize; }
+    .table-wrapper { background: var(--surface); border-radius: 8px; border: 1px solid var(--border); overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; min-width: 600px; }
+    thead { background: rgba(74,144,226,0.05); }
+    th { padding: 12px; text-align: left; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border); white-space: nowrap; }
+    td { padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; word-break: break-word; }
+    tr:hover td { background: rgba(74,144,226,0.05); }
+    .copied { background: rgba(76,175,80,0.2) !important; color: #4caf50 !important; }
+    .msg { text-align: center; padding: 60px 20px; color: var(--text2); font-size: 18px; }
+    .err { color: #f44336; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <div class="header"><h1>🎫 Raport Tickete</h1></div>
+  <div id="content"><div class="msg">⏳ Se încarcă datele...</div></div>
+</div>
+<script>
+  function getBinId() {
+    try {
+      return new URLSearchParams(window.location.search).get('bin');
+    } catch(e) {
+      // fallback pentru browsere mai vechi
+      var search = window.location.search;
+      var match = search.match(/[?&]bin=([^&]+)/);
+      return match ? match[1] : null;
+    }
+  }
+
+  function showError(msg) {
+    document.getElementById('content').innerHTML = '<div class="msg err">❌ ' + msg + '</div>';
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(text).catch(function() {
+        fallbackCopy(text);
+      });
+    } else {
+      fallbackCopy(text);
+    }
+  }
+
+  function fallbackCopy(text) {
+    var ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.focus();
+    ta.select();
+    try { document.execCommand('copy'); } catch(e) {}
+    document.body.removeChild(ta);
+  }
+
+  function renderPage(data) {
+    if (!data || !data.length) { showError('Nu există date'); return; }
+
+    var accounts = {};
+    var locations = {};
+    var counts = {};
+
+    data.forEach(function(r) {
+      if (r.a) accounts[r.a] = 1;
+      if (r.l) locations[r.l] = 1;
+      var t = r.ty || '?';
+      counts[t] = (counts[t] || 0) + 1;
+    });
+
+    var typesHtml = Object.keys(counts).sort(function(a,b){return counts[b]-counts[a];}).map(function(t) {
+      return '<div class="type-card"><div class="type-value">' + counts[t] + '</div><div class="type-label">' + t + '</div></div>';
+    }).join('');
+
+    var rowsHtml = data.map(function(r) {
+      return '<tr>' +
+        '<td>' + (r.t||'') + '</td>' +
+        '<td>' + (r.a||'') + '</td>' +
+        '<td>' + (r.b||'') + '</td>' +
+        '<td>' + (r.l||'') + '</td>' +
+        '<td>' + (r.ty||'') + '</td>' +
+        '<td>' + (r.d||'') + '</td>' +
+      '</tr>';
+    }).join('');
+
+    document.getElementById('content').innerHTML =
+      '<div class="stats">' +
+        '<div class="stat-card"><div class="stat-value">' + data.length + '</div><div class="stat-label">Total Tickete</div></div>' +
+        '<div class="stat-card"><div class="stat-value">' + Object.keys(accounts).length + '</div><div class="stat-label">Conturi</div></div>' +
+        '<div class="stat-card"><div class="stat-value">' + Object.keys(locations).length + '</div><div class="stat-label">Localități</div></div>' +
+      '</div>' +
+      '<div class="types-section"><div class="types-title">Tipuri de Tickete</div><div class="types-grid">' + typesHtml + '</div></div>' +
+      '<div class="table-wrapper"><table>' +
+        '<thead><tr><th>Ticket</th><th>Account</th><th>Beneficiar</th><th>Localitate</th><th>Tip</th><th>Data</th></tr></thead>' +
+        '<tbody>' + rowsHtml + '</tbody>' +
+      '</table></div>';
+
+    // Copy on click - compatibil cu toate browserele
+    var cells = document.querySelectorAll('td');
+    for (var i = 0; i < cells.length; i++) {
+      (function(cell) {
+        cell.addEventListener('click', function() {
+          var text = cell.textContent || cell.innerText;
+          copyText(text);
+          var orig = cell.className;
+          cell.classList.add('copied');
+          setTimeout(function() { cell.className = orig; }, 700);
+        });
+      })(cells[i]);
+    }
+  }
+
+  function loadData() {
+    var binId = getBinId();
+    if (!binId) { showError('Link invalid - lipsește ID-ul'); return; }
+
+    var url = 'https://api.jsonbin.io/v3/b/' + binId + '/latest';
+
+    // Compatibil cu toate browserele - XMLHttpRequest în loc de fetch
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', url, true);
+    xhr.setRequestHeader('X-Access-Key', '$2a$10$placeholder');
+    xhr.onreadystatechange = function() {
+      if (xhr.readyState !== 4) return;
+      if (xhr.status === 200) {
+        try {
+          var result = JSON.parse(xhr.responseText);
+          renderPage(result.record.data);
+        } catch(e) {
+          showError('Eroare la citirea datelor: ' + e.message);
+        }
+      } else if (xhr.status === 401) {
+        // Fără autentificare - bin public
+        var xhr2 = new XMLHttpRequest();
+        xhr2.open('GET', url, true);
+        xhr2.onreadystatechange = function() {
+          if (xhr2.readyState !== 4) return;
+          if (xhr2.status === 200) {
+            try {
+              var result = JSON.parse(xhr2.responseText);
+              renderPage(result.record.data);
+            } catch(e) {
+              showError('Eroare la citirea datelor');
+            }
+          } else {
+            showError('Link invalid sau expirat (cod: ' + xhr2.status + ')');
+          }
+        };
+        xhr2.onerror = function() { showError('Eroare de conexiune. Verifică internetul.'); };
+        xhr2.send();
+      } else {
+        showError('Link invalid sau expirat (cod: ' + xhr.status + ')');
+      }
+    };
+    xhr.onerror = function() { showError('Eroare de conexiune. Verifică internetul.'); };
+    xhr.send();
+  }
+
+  loadData();
+</script>
+</body>
+</html>
