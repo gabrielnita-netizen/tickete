@@ -1,0 +1,333 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tickete Manager</title>
+  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    :root { --primary: #4a90e2; --bg: #f5f5f1; --surface: #fff; --text: #1a1a1a; --text2: #666; --border: #ddd; }
+    @media (prefers-color-scheme: dark) { :root { --bg: #1a1a1a; --surface: #2d2d2d; --text: #fff; --text2: #999; --border: #444; } }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: var(--bg); color: var(--text); padding: 16px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    .header { text-align: center; margin-bottom: 24px; }
+    .header h1 { font-size: 28px; color: var(--primary); margin-bottom: 8px; }
+    .header p { color: var(--text2); font-size: 14px; }
+    .apikey-box { background: var(--surface); border: 1px solid #ffc107; border-radius: 8px; padding: 16px; margin-bottom: 24px; }
+    .apikey-box h3 { color: #856404; margin-bottom: 8px; font-size: 14px; }
+    .apikey-box p { color: var(--text2); font-size: 12px; margin-bottom: 8px; }
+    .apikey-box a { color: var(--primary); }
+    .apikey-row { display: flex; gap: 8px; }
+    .apikey-row input { flex: 1; padding: 8px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; background: var(--bg); color: var(--text); }
+    .status { padding: 12px 16px; border-radius: 8px; margin-bottom: 16px; display: none; font-size: 14px; }
+    .status.show { display: block; }
+    .status.success { background: rgba(76,175,80,0.1); color: #4caf50; border: 1px solid rgba(76,175,80,0.3); }
+    .status.error { background: rgba(244,67,54,0.1); color: #f44336; border: 1px solid rgba(244,67,54,0.3); }
+    .status.info { background: rgba(74,144,226,0.1); color: #4a90e2; border: 1px solid rgba(74,144,226,0.3); }
+    .upload-zone { border: 2px dashed var(--border); border-radius: 12px; padding: 40px; text-align: center; cursor: pointer; transition: all 0.3s; margin-bottom: 24px; background: var(--surface); }
+    .upload-zone:hover, .upload-zone.drag-over { border-color: var(--primary); background: rgba(74,144,226,0.05); }
+    .upload-zone-icon { font-size: 48px; margin-bottom: 16px; }
+    input[type="file"] { display: none; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 12px; margin-bottom: 16px; }
+    .stat-card { background: var(--surface); padding: 16px; border-radius: 8px; border: 1px solid var(--border); text-align: center; }
+    .stat-value { font-size: 28px; font-weight: 700; color: var(--primary); }
+    .stat-label { font-size: 12px; color: var(--text2); margin-top: 8px; text-transform: uppercase; }
+    .types-section { margin-bottom: 24px; display: none; }
+    .types-title { font-size: 12px; margin-bottom: 10px; color: var(--text2); text-transform: uppercase; letter-spacing: 0.5px; }
+    .types-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(90px, 1fr)); gap: 8px; }
+    .type-card { background: var(--surface); padding: 10px; border-radius: 6px; border: 1px solid var(--border); text-align: center; }
+    .type-value { font-size: 20px; font-weight: 700; color: var(--primary); }
+    .type-label { font-size: 11px; color: var(--text2); margin-top: 4px; text-transform: capitalize; }
+    .controls { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+    button { padding: 10px 16px; border: 1px solid var(--border); border-radius: 6px; background: var(--surface); color: var(--text); cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.2s; }
+    button:hover:not(:disabled) { background: rgba(74,144,226,0.1); border-color: var(--primary); color: var(--primary); }
+    button.primary { background: var(--primary); color: white; border-color: var(--primary); }
+    button.primary:hover:not(:disabled) { background: #357abd; }
+    button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .table-wrapper { background: var(--surface); border-radius: 8px; border: 1px solid var(--border); overflow: auto; margin-bottom: 24px; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    thead { background: rgba(74,144,226,0.05); position: sticky; top: 0; }
+    th { padding: 12px; text-align: left; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border); }
+    td { padding: 12px; border-bottom: 1px solid var(--border); cursor: pointer; }
+    tr:hover td { background: rgba(74,144,226,0.05); }
+    td.copied { background: rgba(76,175,80,0.2); color: #4caf50; }
+    .modal { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 2000; align-items: center; justify-content: center; padding: 16px; }
+    .modal.show { display: flex; }
+    .modal-content { background: var(--surface); border-radius: 12px; padding: 24px; max-width: 500px; width: 100%; }
+    .modal h2 { margin: 0 0 8px; font-size: 18px; color: var(--primary); }
+    .modal p { color: var(--text2); font-size: 13px; margin: 0 0 12px; }
+    .modal-input { width: 100%; padding: 10px 12px; border: 1px solid var(--border); border-radius: 6px; font-size: 13px; font-family: monospace; margin-bottom: 12px; color: var(--text); background: rgba(74,144,226,0.05); }
+    .modal-buttons { display: flex; gap: 12px; flex-wrap: wrap; }
+    .modal-buttons button { flex: 1; min-width: 80px; }
+    @media (max-width: 768px) { .controls { flex-direction: column; } button { width: 100%; } }
+  </style>
+
+  <script>
+    // Rulează INAINTE de randarea paginii
+    if (new URLSearchParams(window.location.search).get('bin')) {
+      document.write('<style>#apikeyBox,#uploadZone,#controls,#headerSub{display:none!important}</style>');
+    }
+  </script>
+</head>
+<body>
+<div class="container">
+  <div class="header">
+    <h1>🎫 Tickete Manager</h1>
+    <p id="headerSub">Extrage și partajează date din Excel pe WhatsApp</p>
+  </div>
+
+  <div class="apikey-box" id="apikeyBox">
+    <h3>🔑 Pas unic: Adaugă cheia API (gratuit, 2 minute)</h3>
+    <p>1. Du-te la <a href="https://jsonbin.io" target="_blank">jsonbin.io</a> → Sign Up gratuit → click <strong>API Keys</strong> → copiază <strong>Master Key</strong><br>
+       2. Lipește cheia mai jos și click Salvează</p>
+    <div class="apikey-row">
+      <input type="text" id="apikeyInput" placeholder="$2a$10$...">
+      <button class="primary" onclick="saveApiKey()">✅ Salvează</button>
+    </div>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="upload-zone" id="uploadZone">
+    <div class="upload-zone-icon">📁</div>
+    <h2>Încarcă fișierul Excel</h2>
+    <p>Drag & drop fișierul .xls sau .xlsx</p>
+    <input type="file" id="fileInput" accept=".xls,.xlsx">
+  </div>
+
+  <div class="stats" id="stats" style="display:none;">
+    <div class="stat-card"><div class="stat-value" id="ticketCount">0</div><div class="stat-label">Total Tickete</div></div>
+    <div class="stat-card"><div class="stat-value" id="uniqueAccounts">0</div><div class="stat-label">Conturi</div></div>
+    <div class="stat-card"><div class="stat-value" id="uniqueLocations">0</div><div class="stat-label">Localități</div></div>
+  </div>
+
+  <div class="types-section" id="typesSection">
+    <div class="types-title">Tipuri de Tickete</div>
+    <div class="types-grid" id="typesGrid"></div>
+  </div>
+
+  <div class="controls" id="controls" style="display:none;">
+    <button class="primary" onclick="generateShareLink()" id="shareBtn">💬 WhatsApp Link</button>
+    <button onclick="downloadCSV()">📥 CSV</button>
+    <button onclick="downloadJSON()">📥 JSON</button>
+    <button onclick="resetData()">🔄 Reset</button>
+  </div>
+
+  <div class="table-wrapper" id="tableWrapper" style="display:none;">
+    <table>
+      <thead><tr><th>Ticket</th><th>Account</th><th>Beneficiar</th><th>Localitate</th><th>Tip</th><th>Data</th></tr></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+</div>
+
+<div class="modal" id="linkModal">
+  <div class="modal-content">
+    <h2>💬 Link pentru WhatsApp</h2>
+    <p>Link scurt — datele stau în cloud, oricine poate accesa.</p>
+    <input type="text" class="modal-input" id="shareLinkInput" readonly>
+    <div class="modal-buttons">
+      <button class="primary" onclick="copyLink()">📋 Copy</button>
+      <button class="primary" onclick="openWhatsApp()">💬 WhatsApp</button>
+      <button onclick="closeModal()">Închide</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  var IS_VIEW_MODE = !!new URLSearchParams(window.location.search).get('bin');
+  var currentData = [];
+  var API_KEY = localStorage.getItem('jb_key') || '';
+
+  // Aplică modul vizualizare IMEDIAT la încărcare
+  if (IS_VIEW_MODE) {
+    document.getElementById('apikeyBox').style.display = 'none';
+    document.getElementById('uploadZone').style.display = 'none';
+    document.getElementById('headerSub').style.display = 'none';
+  } else {
+    if (API_KEY) {
+      document.getElementById('apikeyInput').value = API_KEY;
+      document.getElementById('apikeyBox').style.display = 'none';
+    }
+  }
+
+  function saveApiKey() {
+    var key = document.getElementById('apikeyInput').value.trim();
+    if (!key) { showStatus('❌ Introdu cheia API', 'error'); return; }
+    API_KEY = key;
+    localStorage.setItem('jb_key', key);
+    document.getElementById('apikeyBox').style.display = 'none';
+    showStatus('✅ Cheie salvată!', 'success');
+  }
+
+  var statusDiv = document.getElementById('status');
+  function showStatus(msg, type, duration) {
+    if (duration === undefined) duration = 4000;
+    statusDiv.textContent = msg;
+    statusDiv.className = 'status show ' + type;
+    if (duration > 0) setTimeout(function() { statusDiv.classList.remove('show'); }, duration);
+  }
+
+  if (!IS_VIEW_MODE) {
+    var uploadZone = document.getElementById('uploadZone');
+    var fileInput = document.getElementById('fileInput');
+    uploadZone.addEventListener('click', function() { fileInput.click(); });
+    uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); uploadZone.classList.add('drag-over'); });
+    uploadZone.addEventListener('dragleave', function() { uploadZone.classList.remove('drag-over'); });
+    uploadZone.addEventListener('drop', function(e) { e.preventDefault(); uploadZone.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); });
+    fileInput.addEventListener('change', function(e) { handleFiles(e.target.files); });
+  }
+
+  function handleFiles(files) {
+    if (!files[0]) return;
+    if (!files[0].name.toLowerCase().match(/\.xlsx?$/)) { showStatus('❌ Selectează .xls sau .xlsx', 'error'); return; }
+    showStatus('⏳ Se procesează...', 'info', 0);
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      try {
+        var wb = XLSX.read(new Uint8Array(e.target.result), { type: 'array', defval: '' });
+        var rawData = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { defval: '' });
+        if (!rawData.length) { showStatus('❌ Fișierul este gol', 'error'); return; }
+        processData(rawData);
+        showStatus('✓ Încărcat ' + rawData.length + ' tickete', 'success');
+      } catch (err) { showStatus('❌ Eroare: ' + err.message, 'error'); }
+    };
+    reader.readAsArrayBuffer(files[0]);
+  }
+
+  function processData(rawData) {
+    function g(row) {
+      var names = Array.prototype.slice.call(arguments, 1);
+      for (var i = 0; i < names.length; i++) {
+        if (row[names[i]] != null && row[names[i]] !== '') return String(row[names[i]]).trim();
+      }
+      return '';
+    }
+    currentData = rawData.filter(function(r) {
+      return Object.values(r).some(function(v) { return v !== ''; });
+    }).map(function(row) {
+      return {
+        t:  g(row, 'numar'),
+        a:  g(row, 'obj__hexid'),
+        b:  g(row, 'obj__client__denumire'),
+        ob: g(row, 'obj__name'),
+        l:  g(row, 'obj__loc'),
+        ad: g(row, 'obj__address'),
+        j:  g(row, 'obj__jud'),
+        ty: g(row, 'type'),
+        d:  convertDate(g(row, 'obj__objevents__last_date')),
+        dp: convertDate(g(row, 'date_prg')),
+        n:  g(row, 'note')
+      };
+    });
+    renderTable(); updateStats();
+    document.getElementById('tableWrapper').style.display = 'block';
+    document.getElementById('stats').style.display = 'grid';
+    if (!IS_VIEW_MODE) document.getElementById('controls').style.display = 'flex';
+  }
+
+  function convertDate(v) {
+    if (!v) return '';
+    if (typeof v === 'string' && /^\d{2}\.\d{2}\.\d{4}$/.test(v)) return v;
+    if (typeof v === 'number' && v > 0) {
+      var d = new Date((v - 1) * 86400000 + new Date(1900, 0, 1).getTime());
+      if (!isNaN(d)) return d.toLocaleDateString('ro-RO');
+    }
+    return '';
+  }
+
+  function renderTable() {
+    document.getElementById('tableBody').innerHTML = currentData.map(function(r) {
+      return '<tr><td class="copyable">' + r.t + '</td><td class="copyable">' + r.a + '</td><td class="copyable">' + r.b + '</td><td class="copyable">' + r.l + '</td><td class="copyable">' + r.ty + '</td><td class="copyable">' + r.d + '</td></tr>';
+    }).join('');
+    document.querySelectorAll('.copyable').forEach(function(cell) {
+      cell.addEventListener('click', function() {
+        navigator.clipboard.writeText(this.textContent);
+        var orig = this.textContent;
+        this.textContent = '✓'; this.classList.add('copied');
+        var self = this;
+        setTimeout(function() { self.textContent = orig; self.classList.remove('copied'); }, 700);
+      });
+    });
+  }
+
+  function updateStats() {
+    document.getElementById('ticketCount').textContent = currentData.length;
+    document.getElementById('uniqueAccounts').textContent = new Set(currentData.map(function(r) { return r.a; })).size;
+    document.getElementById('uniqueLocations').textContent = new Set(currentData.map(function(r) { return r.l; })).size;
+    var counts = {};
+    currentData.forEach(function(r) { var t = r.ty || '?'; counts[t] = (counts[t] || 0) + 1; });
+    document.getElementById('typesGrid').innerHTML = Object.entries(counts).sort(function(a, b) { return b[1] - a[1]; }).map(function(e) {
+      return '<div class="type-card"><div class="type-value">' + e[1] + '</div><div class="type-label">' + e[0] + '</div></div>';
+    }).join('');
+    document.getElementById('typesSection').style.display = 'block';
+  }
+
+  async function generateShareLink() {
+    if (!currentData.length) { showStatus('❌ Niciun date', 'error'); return; }
+    if (!API_KEY) { showStatus('❌ Adaugă cheia API mai întâi', 'error'); document.getElementById('apikeyBox').style.display = 'block'; return; }
+    var btn = document.getElementById('shareBtn');
+    btn.disabled = true; btn.textContent = '⏳ Se salvează...';
+    try {
+      var response = await fetch('https://api.jsonbin.io/v3/b', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-Master-Key': API_KEY, 'X-Bin-Private': 'false' },
+        body: JSON.stringify({ data: currentData, created: Date.now() })
+      });
+      if (!response.ok) throw new Error((await response.json()).message || 'Eroare API');
+      var result = await response.json();
+      var link = 'https://gabrielnita-netizen.github.io/tickete/raport.html?bin=' + result.metadata.id;
+      document.getElementById('shareLinkInput').value = link;
+      document.getElementById('linkModal').classList.add('show');
+      showStatus('✓ Link generat!', 'success');
+    } catch (err) { showStatus('❌ Eroare: ' + err.message, 'error'); }
+    btn.disabled = false; btn.textContent = '💬 WhatsApp Link';
+  }
+
+  function copyLink() { navigator.clipboard.writeText(document.getElementById('shareLinkInput').value); showStatus('✓ Link copiat!', 'success'); }
+  function openWhatsApp() { var link = document.getElementById('shareLinkInput').value; window.open('https://wa.me/?text=' + encodeURIComponent('🎫 Raport tickete:\n' + link), '_blank'); }
+  function closeModal() { document.getElementById('linkModal').classList.remove('show'); }
+
+  async function loadFromURL() {
+    var binId = new URLSearchParams(window.location.search).get('bin');
+    if (!binId) return;
+    showStatus('⏳ Se încarcă datele...', 'info', 0);
+    try {
+      var response = await fetch('https://api.jsonbin.io/v3/b/' + binId + '/latest');
+      if (!response.ok) throw new Error('Link invalid sau expirat');
+      var result = await response.json();
+      currentData = result.record.data;
+      renderTable(); updateStats();
+      document.getElementById('tableWrapper').style.display = 'block';
+      document.getElementById('stats').style.display = 'grid';
+      showStatus('✓ Încărcat ' + currentData.length + ' tickete', 'success');
+    } catch (err) { showStatus('❌ ' + err.message, 'error'); }
+  }
+
+  function downloadCSV() {
+    if (!currentData.length) return;
+    var h = ['Ticket','Account','Beneficiar','Localitate','Tip','Data'];
+    var csv = [h.join(',')].concat(currentData.map(function(r) { return [r.t,r.a,r.b,r.l,r.ty,r.d].map(function(v) { return '"' + v + '"'; }).join(','); })).join('\n');
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], {type:'text/csv'})); a.download = 'tickete.csv'; a.click();
+  }
+
+  function downloadJSON() {
+    if (!currentData.length) return;
+    var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([JSON.stringify(currentData,null,2)], {type:'application/json'})); a.download = 'tickete.json'; a.click();
+  }
+
+  function resetData() {
+    if (!confirm('Ștergi datele?')) return;
+    currentData = [];
+    document.getElementById('tableBody').innerHTML = '';
+    ['tableWrapper','controls','stats','typesSection'].forEach(function(id) { document.getElementById(id).style.display = 'none'; });
+    document.getElementById('fileInput').value = '';
+    showStatus('✓ Date șterse', 'info');
+  }
+
+  document.addEventListener('click', function(e) { if (e.target.classList.contains('modal')) closeModal(); });
+  loadFromURL();
+</script>
+</body>
+</html>
