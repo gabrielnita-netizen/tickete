@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Tickete Manager</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--pr:#4a90e2;--bg:#f5f5f1;--su:#fff;--tx:#1a1a1a;--t2:#666;--br:#ddd}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a1a;--su:#2d2d2d;--tx:#fff;--t2:#999;--br:#444}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);padding:16px}
+.wrap{max-width:1200px;margin:0 auto}
+h1{text-align:center;font-size:26px;color:var(--pr);margin-bottom:20px}
+.setup-box{background:#fff8e1;border:1px solid #ffc107;border-radius:10px;padding:20px;margin-bottom:24px}
+.setup-box h3{color:#856404;margin-bottom:12px;font-size:15px}
+.setup-box p{color:#856404;font-size:13px;margin-bottom:10px;line-height:1.6}
+.setup-box input{width:100%;padding:10px 12px;border:1px solid #ffc107;border-radius:6px;font-size:13px;margin-bottom:10px;font-family:monospace}
+.upload-zone{border:2px dashed var(--br);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all .3s;margin-bottom:24px;background:var(--su)}
+.upload-zone:hover,.upload-zone.drag-over{border-color:var(--pr);background:rgba(74,144,226,.05)}
+.upload-icon{font-size:48px;margin-bottom:16px}
+input[type=file]{display:none}
+.status{padding:12px 16px;border-radius:8px;margin-bottom:16px;display:none;font-size:14px}
+.status.on{display:block}
+.status.ok{background:rgba(76,175,80,.1);color:#4caf50;border:1px solid rgba(76,175,80,.3)}
+.status.err{background:rgba(244,67,54,.1);color:#f44336;border:1px solid rgba(244,67,54,.3)}
+.status.inf{background:rgba(74,144,226,.1);color:#4a90e2;border:1px solid rgba(74,144,226,.3)}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.sc{background:var(--su);padding:16px;border-radius:8px;border:1px solid var(--br);text-align:center}
+.sv{font-size:26px;font-weight:700;color:var(--pr)}
+.sl{font-size:11px;color:var(--t2);margin-top:6px;text-transform:uppercase}
+.sec{margin-bottom:20px}
+.sec-title{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
+.card{background:var(--su);padding:10px;border-radius:6px;border:2px solid var(--br);text-align:center;cursor:pointer;transition:all .15s}
+.card:hover{border-color:var(--pr)}
+.card.on{border-color:var(--pr);background:rgba(74,144,226,.12);box-shadow:0 0 0 2px rgba(74,144,226,.25)}
+.cv{font-size:20px;font-weight:700;color:var(--pr)}
+.cl{font-size:11px;color:var(--t2);margin-top:4px}
+.fbar{display:none;background:rgba(74,144,226,.08);border:1px solid rgba(74,144,226,.3);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;align-items:center;justify-content:space-between;gap:8px}
+.fbar.on{display:flex}
+.fbar span{color:var(--pr);font-weight:500}
+.fbar button{background:none;border:1px solid var(--pr);border-radius:6px;padding:4px 10px;color:var(--pr);cursor:pointer;font-size:12px}
+.controls{display:flex;gap:12px;margin-bottom:24px;flex-wrap:wrap}
+button{padding:10px 16px;border:1px solid var(--br);border-radius:6px;background:var(--su);color:var(--tx);cursor:pointer;font-size:13px;font-weight:500;transition:all .2s}
+button:hover:not(:disabled){background:rgba(74,144,226,.1);border-color:var(--pr);color:var(--pr)}
+button.primary{background:var(--pr);color:#fff;border-color:var(--pr)}
+button.primary:hover:not(:disabled){background:#357abd}
+button:disabled{opacity:.5;cursor:not-allowed}
+.tw{background:var(--su);border-radius:8px;border:1px solid var(--br);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:rgba(74,144,226,.05);position:sticky;top:0;z-index:5}
+th{padding:10px 12px;text-align:left;font-weight:600;color:var(--pr);border-bottom:1px solid var(--br);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--br)}
+tr:hover td{background:rgba(74,144,226,.04)}
+.tlink{color:var(--pr);cursor:pointer;font-weight:700;text-decoration:underline}
+.cp{cursor:pointer}
+.cp:hover{background:rgba(74,144,226,.08)!important}
+.copied{background:rgba(76,175,80,.2)!important;color:#4caf50!important}
+.empty{text-align:center;padding:24px;color:var(--t2);font-style:italic}
+.modal-bg{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:200;justify-content:center;align-items:center;padding:16px}
+.modal-bg.on{display:flex}
+.modal{background:var(--su);border-radius:12px;padding:24px;max-width:520px;width:100%}
+.modal h2{font-size:16px;color:var(--pr);margin-bottom:8px}
+.modal p{font-size:13px;color:var(--t2);margin-bottom:12px}
+.modal input{width:100%;padding:10px 12px;border:1px solid var(--br);border-radius:6px;font-size:12px;font-family:monospace;margin-bottom:12px;color:var(--tx);background:rgba(74,144,226,.05)}
+.modal-btns{display:flex;gap:10px}
+.modal-btns button{flex:1}
+#ov{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:100;justify-content:center;align-items:center;padding:16px}
+#ov.on{display:flex}
+#pan{background:var(--su);border-radius:12px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.ph{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--br);position:sticky;top:0;background:var(--su)}
+.ph h2{font-size:15px;color:var(--pr)}
+.xb{background:none;border:none;font-size:20px;cursor:pointer;color:var(--t2);padding:2px 6px;border-radius:4px}
+.xb:hover{background:var(--br)}
+.pb{padding:14px 18px}
+.fr{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--br);align-items:flex-start}
+.fr:last-child{border-bottom:none}
+.fl{font-size:11px;color:var(--t2);text-transform:uppercase;min-width:125px;flex-shrink:0;padding-top:2px}
+.fv{font-size:14px;line-height:1.5;word-break:break-word;cursor:pointer;flex:1;color:var(--tx)}
+.fv:hover{color:var(--pr)}
+.fv.em{color:var(--t2);font-style:italic;cursor:default}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;background:rgba(74,144,226,.15);color:var(--pr);font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎫 Tickete Manager</h1>
+
+  <!-- Setup box - se ascunde după configurare -->
+  <div class="setup-box" id="setupBox">
+    <h3>⚙️ Configurare necesară (o singură dată, 5 minute)</h3>
+    <p>Această aplicație are nevoie de un <strong>Google Apps Script</strong> gratuit pentru a genera linkuri WhatsApp. Urmează instrucțiunile din fișierul <strong>SETUP_GOOGLE_SCRIPT.md</strong>, apoi lipește URL-ul mai jos.</p>
+    <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="primary" onclick="saveScriptUrl()" style="width:100%">✅ Salvează și continuă</button>
+  </div>
+
+  <div class="status" id="status"></div>
+
+  <div class="upload-zone" id="uploadZone">
+    <div class="upload-icon">📁</div>
+    <h2>Încarcă fișierul Excel</h2>
+    <p>Drag & drop .xls sau .xlsx</p>
+    <input type="file" id="fileInput" accept=".xls,.xlsx">
+  </div>
+
+  <div id="statsArea" style="display:none">
+    <div class="grid3">
+      <div class="sc"><div class="sv" id="cTotal">0</div><div class="sl">Total Tickete</div></div>
+      <div class="sc"><div class="sv" id="cConturi">0</div><div class="sl">Conturi</div></div>
+      <div class="sc"><div class="sv" id="cLoc">0</div><div class="sl">Localități</div></div>
+    </div>
+    <div class="sec"><div class="sec-title">🏙 Localități — apasă pentru filtrare</div><div class="cards" id="locGrid"></div></div>
+    <div class="sec"><div class="sec-title">🏷 Tipuri — apasă pentru filtrare</div><div class="cards" id="typeGrid"></div></div>
+    <div class="fbar" id="fbar"><span id="fbar-text"></span><button onclick="clearFilters()">✕ Elimină filtru</button></div>
+    <div class="controls">
+      <button class="primary" id="shareBtn" onclick="shareLink()">💬 WhatsApp Link</button>
+      <button onclick="downloadCSV()">📥 CSV</button>
+      <button onclick="document.getElementById('setupBox').style.display=\'block\'">⚙️ Config</button>
+      <button onclick="resetData()">🔄 Reset</button>
+    </div>
+    <div class="tw"><table>
+      <thead><tr><th>Ticket</th><th>Account</th><th>Beneficiara</th><th>Localitate</th><th>Tip</th><th>Data initiere</th><th>Data programata</th></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="modal-bg" id="linkModal">
+  <div class="modal">
+    <h2>💬 Link pentru WhatsApp</h2>
+    <p>Trimite linkul — oricine îl deschide va vedea datele.</p>
+    <input type="text" id="linkInput" readonly>
+    <div class="modal-btns">
+      <button class="primary" onclick="copyLink()">📋 Copy</button>
+      <button class="primary" onclick="openWA()">💬 WhatsApp</button>
+      <button onclick="closeLink()">Închide</button>
+    </div>
+  </div>
+</div>
+
+<div id="ov">
+  <div id="pan">
+    <div class="ph"><h2 id="ptitle">Detalii</h2><button class="xb" id="xbtn">✕</button></div>
+    <div class="pb" id="pbody"></div>
+  </div>
+</div>
+
+<script>
+var DATA=[], activeType=null, activeLoc=null;
+var SCRIPT_URL = localStorage.getItem('gas_url') || 'https://script.google.com/macros/s/AKfycbw4Q5o1V4jVU-1BxONTXJ51bqotEivuAIh3MU38V7hN0sXcY7yodAdz6ynoTmxSjL8/exec';
+var BASE_URL = 'https://gabrielnita-netizen.github.io/tickete/r.html';
+
+// Init
+if(SCRIPT_URL) document.getElementById('setupBox').style.display='none';
+
+function saveScriptUrl(){
+  var url = document.getElementById('scriptUrl').value.trim();
+  if(!url || !url.includes('script.google.com')){showStatus('❌ URL invalid — trebuie să fie de la script.google.com','err');return;}
+  SCRIPT_URL = url;
+  localStorage.setItem('gas_url', url);
+  document.getElementById('setupBox').style.display='none';
+  showStatus('✅ Configurat! Acum poți genera linkuri WhatsApp.','ok');
+}
+
+function s(v){return (v||'').toString();}
+function showStatus(msg,type,dur){var el=document.getElementById('status');el.textContent=msg;el.className='status on '+type;if(dur!==0)setTimeout(function(){el.classList.remove('on');},dur||4000);}
+function cp(txt,el){var done=function(){el.classList.add('copied');setTimeout(function(){el.classList.remove('copied');},700);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(function(){fb(txt);done();});}else{fb(txt);done();}}
+function fb(txt){var t=document.createElement('textarea');t.value=txt;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.focus();t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(t);}
+
+var uz=document.getElementById('uploadZone'),fi=document.getElementById('fileInput');
+uz.onclick=function(){fi.click();};
+uz.ondragover=function(e){e.preventDefault();uz.classList.add('drag-over');};
+uz.ondragleave=function(){uz.classList.remove('drag-over');};
+uz.ondrop=function(e){e.preventDefault();uz.classList.remove('drag-over');handleFiles(e.dataTransfer.files);};
+fi.onchange=function(){handleFiles(fi.files);};
+
+function handleFiles(files){
+  if(!files[0])return;
+  if(!files[0].name.toLowerCase().match(/\.xlsx?$/)){showStatus('❌ Selectează .xls sau .xlsx','err');return;}
+  showStatus('⏳ Se procesează...','inf',0);
+  var reader=new FileReader();
+  reader.onload=function(e){
+    try{
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',defval:''});
+      var raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      if(!raw.length){showStatus('❌ Fișierul e gol','err');return;}
+      processData(raw);
+      showStatus('✓ Încărcat '+raw.length+' tickete','ok');
+    }catch(err){showStatus('❌ '+err.message,'err');}
+  };
+  reader.readAsArrayBuffer(files[0]);
+}
+
+function g(row){for(var i=1;i<arguments.length;i++){var v=row[arguments[i]];if(v!=null&&v!=='')return String(v).trim();}return '';}
+
+function processData(raw){
+  DATA=raw.filter(function(r){return Object.values(r).some(function(v){return v!=='';});}).map(function(r){
+    return {t:g(r,'numar'),a:g(r,'obj__hexid'),b:g(r,'obj__client__denumire'),ob:g(r,'obj__name'),
+      l:g(r,'obj__loc'),ad:g(r,'obj__address'),j:g(r,'obj__jud'),ty:g(r,'type'),
+      d:cvDate(g(r,'obj__objevents__last_date')),dp:cvDate(g(r,'date_prg')),n:g(r,'note')};
+  });
+  activeType=null;activeLoc=null;
+  buildStats();
+  document.getElementById('statsArea').style.display='block';
+  document.getElementById('uploadZone').style.display='none';
+}
+
+function cvDate(v){
+  if(!v)return '';
+  if(typeof v==='string'&&/^\d{2}\.\d{2}\.\d{4}$/.test(v))return v;
+  if(typeof v==='number'&&v>0){var d=new Date((v-1)*86400000+new Date(1900,0,1).getTime());if(!isNaN(d))return d.toLocaleDateString('ro-RO');}
+  return '';
+}
+
+function buildStats(){
+  var acc={},loc={},cnt={};
+  DATA.forEach(function(r){if(r.a)acc[r.a]=1;if(r.l)loc[r.l]=(loc[r.l]||0)+1;var t=r.ty||'?';cnt[t]=(cnt[t]||0)+1;});
+  document.getElementById('cTotal').textContent=DATA.length;
+  document.getElementById('cConturi').textContent=Object.keys(acc).length;
+  document.getElementById('cLoc').textContent=Object.keys(loc).length;
+  var locs=Object.keys(loc).sort();
+  document.getElementById('locGrid').innerHTML=locs.map(function(l){return '<div class="card" data-loc="'+l+'"><div class="cv">'+loc[l]+'</div><div class="cl">'+l+'</div></div>';}).join('');
+  var types=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a];});
+  document.getElementById('typeGrid').innerHTML=types.map(function(t){return '<div class="card" data-type="'+t+'"><div class="cv">'+cnt[t]+'</div><div class="cl">'+t+'</div></div>';}).join('');
+  document.querySelectorAll('#locGrid .card').forEach(function(el){el.onclick=function(){toggleLoc(el.getAttribute('data-loc'));};});
+  document.querySelectorAll('#typeGrid .card').forEach(function(el){el.onclick=function(){toggleType(el.getAttribute('data-type'));};});
+  updateTable();
+}
+
+function filtered(){return DATA.filter(function(r){return (!activeType||(r.ty||'?')===activeType)&&(!activeLoc||(r.l||'')===activeLoc);});}
+function toggleType(type){activeType=(activeType===type)?null:type;document.querySelectorAll('#typeGrid .card').forEach(function(el){el.className='card'+(el.getAttribute('data-type')===activeType?' on':'');});updateTable();}
+function toggleLoc(loc){activeLoc=(activeLoc===loc)?null:loc;document.querySelectorAll('#locGrid .card').forEach(function(el){el.className='card'+(el.getAttribute('data-loc')===activeLoc?' on':'');});updateTable();}
+function clearFilters(){activeType=null;activeLoc=null;document.querySelectorAll('.card').forEach(function(el){el.className='card';});updateTable();}
+
+function updateTable(){
+  var src=filtered();
+  var rows=src.map(function(r){var i=DATA.indexOf(r);return '<tr><td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span></td><td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td><td class="cp">'+s(r.l)+'</td><td class="cp">'+s(r.ty)+'</td><td class="cp">'+s(r.d)+'</td><td class="cp">'+s(r.dp)+'</td></tr>';}).join('');
+  document.getElementById('tbody').innerHTML=rows||'<tr><td colspan="7" class="empty">Nu există tickete pentru filtrul selectat</td></tr>';
+  document.querySelectorAll('.tlink').forEach(function(el){el.onclick=function(){openPanel(parseInt(el.getAttribute('data-idx')));};});
+  document.querySelectorAll('td.cp').forEach(function(el){el.onclick=function(){cp(el.textContent||el.innerText,el);};});
+  var parts=[];if(activeType)parts.push('Tip: '+activeType);if(activeLoc)parts.push('Localitate: '+activeLoc);
+  var fbar=document.getElementById('fbar');fbar.className=parts.length?'fbar on':'fbar';
+  document.getElementById('fbar-text').textContent='🔍 '+parts.join(' | ')+' ('+src.length+' tickete)';
+}
+
+document.getElementById('xbtn').onclick=function(){document.getElementById('ov').className='';};
+document.getElementById('ov').onclick=function(e){if(e.target===this)this.className='';};
+
+function openPanel(i){
+  var r=DATA[i];if(!r)return;
+  document.getElementById('ptitle').textContent='Ticket #'+s(r.t);
+  var fields=[['Numar ticket',r.t,false],['Account',r.a,false],['Beneficiara',r.b,false],['Obiectiv',r.ob,false],['Localitate',r.l,false],['Adresa',r.ad,false],['Judet',r.j,false],['Tip ticket',r.ty,true],['Data initiere',r.d,false],['Data programata',r.dp,false],['Nota',r.n,false]];
+  var html='';
+  for(var k=0;k<fields.length;k++){
+    var lbl=fields[k][0],val=s(fields[k][1]),badge=fields[k][2],vh;
+    if(!val){vh='<span class="fv em">—</span>';}
+    else if(badge){vh='<span class="fv"><span class="badge">'+val+'</span></span>';}
+    else{vh='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+val.replace(/\n/g,'<br>')+'</span>';}
+    html+='<div class="fr"><span class="fl">'+lbl+'</span>'+vh+'</div>';
+  }
+  document.getElementById('pbody').innerHTML=html;
+  document.querySelectorAll('#pbody .fv[data-val]').forEach(function(el){el.onclick=function(){cp(el.getAttribute('data-val'),el);};});
+  document.getElementById('ov').className='on';
+}
+
+function shareLink(){
+  if(!DATA.length){showStatus('❌ Niciun date','err');return;}
+  if(!SCRIPT_URL){showStatus('❌ Configurează mai întâi Google Apps Script','err');document.getElementById('setupBox').style.display='block';return;}
+  var btn=document.getElementById('shareBtn');
+  btn.disabled=true;btn.textContent='⏳ Se salvează...';
+  // Trimitem datele ca GET cu parametru encodat (evita CORS/redirect issues)
+  var encoded = encodeURIComponent(JSON.stringify(DATA));
+  var url = SCRIPT_URL + '?action=save&payload=' + encoded;
+  
+  fetch(url, { redirect: 'follow' })
+    .then(function(r) { return r.json(); })
+    .then(function(res) {
+      if (res.id) {
+        var link = BASE_URL + '?id=' + res.id;
+        document.getElementById('linkInput').value = link;
+        document.getElementById('linkModal').className = 'modal-bg on';
+        showStatus('✓ Link generat!','ok');
+      } else {
+        showStatus('❌ Eroare: ' + (res.error || 'răspuns invalid'), 'err');
+      }
+      btn.disabled=false; btn.textContent='💬 WhatsApp Link';
+    })
+    .catch(function(e) {
+      showStatus('❌ Eroare: ' + e.message,'err');
+      btn.disabled=false; btn.textContent='💬 WhatsApp Link';
+    });
+}
+
+function copyLink(){cp(document.getElementById('linkInput').value,document.getElementById('linkInput'));showStatus('✓ Link copiat!','ok');}
+function openWA(){window.open('https://wa.me/?text='+encodeURIComponent('🎫 Raport tickete:\n'+document.getElementById('linkInput').value),'_blank');}
+function closeLink(){document.getElementById('linkModal').className='modal-bg';}
+document.getElementById('linkModal').onclick=function(e){if(e.target===this)closeLink();};
+
+function downloadCSV(){
+  if(!DATA.length)return;
+  var h=['Ticket','Account','Beneficiara','Localitate','Tip','Data initiere','Data programata'];
+  var csv=[h.join(',')].concat(DATA.map(function(r){return [r.t,r.a,r.b,r.l,r.ty,r.d,r.dp].map(function(v){return '"'+v+'"';}).join(',');})).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='tickete.csv';a.click();
+}
+
+function resetData(){
+  if(!confirm('Ștergi datele?'))return;
+  DATA=[];activeType=null;activeLoc=null;
+  document.getElementById('statsArea').style.display='none';
+  document.getElementById('uploadZone').style.display='block';
+  fi.value='';showStatus('✓ Date șterse','ok');
+}
+</script>
+</body>
+</html>
