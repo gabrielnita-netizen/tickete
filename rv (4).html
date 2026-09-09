@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raport Tickete</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--pr:#4a90e2;--bg:#f5f5f1;--su:#fff;--tx:#1a1a1a;--t2:#666;--br:#ddd}
+@media(prefers-color-scheme:dark){:root{--bg:#1a1a1a;--su:#2d2d2d;--tx:#fff;--t2:#999;--br:#444}}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);padding:16px}
+.wrap{max-width:1200px;margin:0 auto}
+h1{text-align:center;font-size:26px;color:var(--pr);margin-bottom:20px}
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:16px}
+.sc{background:var(--su);padding:16px;border-radius:8px;border:1px solid var(--br);text-align:center}
+.sv{font-size:26px;font-weight:700;color:var(--pr)}
+.sl{font-size:11px;color:var(--t2);margin-top:6px;text-transform:uppercase}
+.sec{margin-bottom:20px}
+.sec-title{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px}
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(90px,1fr));gap:8px}
+.card{background:var(--su);padding:10px;border-radius:6px;border:2px solid var(--br);text-align:center;cursor:pointer;transition:all .15s;user-select:none}
+.card:hover{border-color:var(--pr)}
+.card.on{border-color:var(--pr);background:rgba(74,144,226,.12);box-shadow:0 0 0 2px rgba(74,144,226,.25)}
+.cv{font-size:20px;font-weight:700;color:var(--pr)}
+.cl{font-size:11px;color:var(--t2);margin-top:4px}
+.fbar{display:none;background:rgba(74,144,226,.08);border:1px solid rgba(74,144,226,.3);border-radius:8px;padding:10px 14px;margin-bottom:16px;font-size:13px;align-items:center;justify-content:space-between;gap:8px}
+.fbar.on{display:flex}
+.fbar span{color:var(--pr);font-weight:500}
+.fbar button{background:none;border:1px solid var(--pr);border-radius:6px;padding:4px 10px;color:var(--pr);cursor:pointer;font-size:12px}
+.tw{background:var(--su);border-radius:8px;border:1px solid var(--br);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead{background:rgba(74,144,226,.05);position:sticky;top:0;z-index:5}
+th{padding:10px 12px;text-align:left;font-weight:600;color:var(--pr);border-bottom:1px solid var(--br);white-space:nowrap}
+td{padding:10px 12px;border-bottom:1px solid var(--br)}
+tr:hover td{background:rgba(74,144,226,.04)}
+.tlink{display:block;color:var(--pr);cursor:pointer;font-weight:700;text-decoration:underline;margin-bottom:4px}
+.rezolvat-btn{display:block;width:100%;background:#4caf50;color:#fff;border:none;border-radius:6px;padding:5px 8px;font-size:11px;font-weight:600;cursor:pointer;transition:all .2s;text-align:center}
+.rezolvat-btn:hover:not(.done){background:#388e3c}
+.rezolvat-btn.done{background:#9e9e9e;cursor:default}
+tr.rezolvat td{background:rgba(76,175,80,.08)!important}
+.cp{cursor:pointer}
+.cp:hover{background:rgba(74,144,226,.08)!important}
+.copied{background:rgba(76,175,80,.2)!important;color:#4caf50!important}
+.empty{text-align:center;padding:24px;color:var(--t2);font-style:italic}
+.msg{text-align:center;padding:60px;color:var(--t2);font-size:18px}
+#ov,#rez-ov{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:100;justify-content:center;align-items:center;padding:16px}
+#ov.on,#rez-ov.on{display:flex}
+#pan,#rez-pan{background:var(--su);border-radius:12px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.25)}
+.ph{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:1px solid var(--br);position:sticky;top:0;background:var(--su)}
+.ph h2{font-size:15px;color:var(--pr)}
+.xb{background:none;border:none;font-size:20px;cursor:pointer;color:var(--t2);padding:2px 6px;border-radius:4px}
+.pb{padding:14px 18px}
+.fr{display:flex;gap:10px;padding:9px 0;border-bottom:1px solid var(--br);align-items:flex-start}
+.fr:last-child{border-bottom:none}
+.fl{font-size:11px;color:var(--t2);text-transform:uppercase;min-width:125px;flex-shrink:0;padding-top:2px}
+.fv{font-size:14px;line-height:1.5;word-break:break-word;cursor:pointer;flex:1;color:var(--tx)}
+.fv:hover{color:var(--pr)}
+.fv.em{color:var(--t2);font-style:italic;cursor:default}
+.badge{display:inline-block;padding:2px 10px;border-radius:12px;background:rgba(74,144,226,.15);color:var(--pr);font-weight:500}
+.rez-header{padding:16px 20px;background:#4caf50;border-radius:12px 12px 0 0}
+.rez-header h2{color:#fff;font-size:16px;margin:0}
+.rez-body{padding:20px}
+.rez-info{background:rgba(76,175,80,.08);border:1px solid rgba(76,175,80,.3);border-radius:8px;padding:12px;margin-bottom:16px;font-size:13px;line-height:1.8}
+.rez-info strong{color:#388e3c}
+.rez-actions{display:flex;flex-direction:column;gap:10px}
+.rez-actions button{padding:12px;border-radius:8px;font-size:14px;font-weight:600;cursor:pointer;border:none}
+.btn-wa{background:#25D366;color:#fff}
+.btn-sheet{background:#4285f4;color:#fff}
+.btn-both{background:linear-gradient(135deg,#25D366,#4285f4);color:#fff}
+.btn-cancel{background:var(--br);color:var(--tx)}
+.rez-status{font-size:12px;color:var(--t2);margin-top:10px;text-align:center;min-height:20px}
+button{padding:10px 16px;border:1px solid var(--br);border-radius:6px;background:var(--su);color:var(--tx);cursor:pointer;font-size:13px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎫 Raport Tickete</h1>
+  <div id="root"><div class="msg">⏳ Se încarcă datele...</div></div>
+</div>
+
+<div id="ov">
+  <div id="pan">
+    <div class="ph"><h2 id="ptitle">Detalii</h2><button class="xb" id="xbtn">✕</button></div>
+    <div class="pb" id="pbody"></div>
+  </div>
+</div>
+
+<div id="rez-ov">
+  <div id="rez-pan">
+    <div class="rez-header"><h2>✅ Marchează ca Rezolvat</h2></div>
+    <div class="rez-body">
+      <div class="rez-info" id="rez-info"></div>
+      <div class="rez-actions">
+        <button class="btn-both" id="btn-ambele">💬 WhatsApp + 📊 Google Sheets</button>
+        <button class="btn-wa" id="btn-wa">💬 Doar WhatsApp</button>
+        <button class="btn-sheet" id="btn-sheet">📊 Doar Google Sheets</button>
+        <button class="btn-cancel" id="btn-cancel">Anulează</button>
+      </div>
+      <div class="rez-status" id="rez-status"></div>
+    </div>
+  </div>
+</div>
+
+<script>
+var DATA = [];
+var activeType = null;
+var activeLoc = null;
+var currentRezIdx = null;
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxG6PtyTahCGXBZpnKzhn45Man-magAfg85CfgGu-mWSTBqoXUhfqL13LT5-ppBZWqU/exec';
+var SHEET_ID = '1feTSTO4FCFTUJBxiD0rd2ICF30jZE9pX6oihHxznkAY';
+
+function s(v){ return (v||'').toString(); }
+
+function cp(txt, el){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ flash(el); }).catch(function(){ fb(txt); flash(el); });
+  } else { fb(txt); flash(el); }
+}
+function fb(txt){ var t=document.createElement('textarea'); t.value=txt; t.style.cssText='position:fixed;opacity:0'; document.body.appendChild(t); t.focus(); t.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(t); }
+function flash(el){ el.classList.add('copied'); setTimeout(function(){ el.classList.remove('copied'); }, 700); }
+
+// Panel detalii
+document.getElementById('xbtn').onclick = function(){ document.getElementById('ov').className = ''; };
+document.getElementById('ov').onclick = function(e){ if(e.target===this) this.className=''; };
+
+function openPanel(i){
+  var r = DATA[i]; if(!r) return;
+  document.getElementById('ptitle').textContent = 'Ticket #' + s(r.t);
+  var fields = [['Numar ticket',r.t,false],['Account',r.a,false],['Beneficiara',r.b,false],['Obiectiv',r.ob,false],['Localitate',r.l,false],['Adresa',r.ad,false],['Judet',r.j,false],['Tip ticket',r.ty,true],['Data initiere',r.d,false],['Data programata',r.dp,false],['Nota',r.n,false]];
+  var html = '';
+  for(var k=0;k<fields.length;k++){
+    var lbl=fields[k][0], val=s(fields[k][1]), badge=fields[k][2], vh;
+    if(!val){ vh='<span class="fv em">—</span>'; }
+    else if(badge){ vh='<span class="fv"><span class="badge">'+val+'</span></span>'; }
+    else{ vh='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+val.replace(/\n/g,'<br>')+'</span>'; }
+    html += '<div class="fr"><span class="fl">'+lbl+'</span>'+vh+'</div>';
+  }
+  document.getElementById('pbody').innerHTML = html;
+  document.querySelectorAll('#pbody .fv[data-val]').forEach(function(el){ el.onclick=function(){ cp(el.getAttribute('data-val'),el); }; });
+  document.getElementById('ov').className = 'on';
+}
+
+// Panel rezolvat
+document.getElementById('rez-ov').onclick = function(e){ if(e.target===this) closeRezolvat(); };
+document.getElementById('btn-cancel').onclick = closeRezolvat;
+document.getElementById('btn-wa').onclick = function(){ rezolvatWA(); };
+document.getElementById('btn-sheet').onclick = function(){ rezolvatSheet(); };
+document.getElementById('btn-ambele').onclick = function(){ rezolvatAmbele(); };
+
+function openRezolvat(i){
+  var r = DATA[i]; if(!r) return;
+  currentRezIdx = i;
+  var ora = new Date().toLocaleString('ro-RO');
+  document.getElementById('rez-info').innerHTML =
+    '<strong>Ticket:</strong> '+s(r.t)+'<br>'+
+    '<strong>Beneficiar:</strong> '+s(r.b)+'<br>'+
+    '<strong>Adresă:</strong> '+s(r.ad)+'<br>'+
+    '<strong>Localitate:</strong> '+s(r.l)+'<br>'+
+    '<strong>Tip:</strong> '+s(r.ty)+'<br>'+
+    '<strong>Data programată:</strong> '+s(r.dp)+'<br>'+
+    '<strong>Ora rezolvare:</strong> '+ora;
+  document.getElementById('rez-status').textContent = '';
+  document.getElementById('rez-ov').className = 'on';
+}
+
+function closeRezolvat(){ document.getElementById('rez-ov').className=''; currentRezIdx=null; }
+
+function buildWAMessage(r){
+  var ora = new Date().toLocaleString('ro-RO');
+  return '✅ *TICKET REZOLVAT*\n\n🎫 Ticket: '+s(r.t)+'\n👤 Beneficiar: '+s(r.b)+'\n📍 Adresă: '+s(r.ad)+', '+s(r.l)+'\n🔧 Tip: '+s(r.ty)+'\n📅 Data programată: '+s(r.dp)+'\n⏰ Rezolvat la: '+ora;
+}
+
+function logToSheet(r, cb){
+  var ora = new Date().toLocaleString('ro-RO');
+  var row = [s(r.t),s(r.b),s(r.ad),s(r.l),s(r.ty),s(r.dp),ora];
+  var cbName = 'cbSheet'+Date.now();
+  var url = SCRIPT_URL+'?action=sheet&sid='+encodeURIComponent(SHEET_ID)+'&row='+encodeURIComponent(JSON.stringify(row))+'&callback='+cbName;
+  window[cbName] = function(data){
+    delete window[cbName];
+    if(data&&data.ok){ document.getElementById('rez-status').textContent='✓ Salvat în Google Sheets'; if(cb) cb(true); }
+    else { document.getElementById('rez-status').textContent='❌ Eroare Sheets'; if(cb) cb(false); }
+  };
+  var sc = document.createElement('script'); sc.src=url;
+  sc.onerror=function(){ delete window[cbName]; document.getElementById('rez-status').textContent='❌ Eroare conexiune'; if(cb) cb(false); };
+  document.head.appendChild(sc);
+}
+
+function markRezolvat(idx){ DATA[idx]._rezolvat=true; updateTable(); }
+
+function rezolvatWA(){
+  var r=DATA[currentRezIdx];
+  window.open('https://wa.me/?text='+encodeURIComponent(buildWAMessage(r)),'_blank');
+  markRezolvat(currentRezIdx); closeRezolvat();
+}
+function rezolvatSheet(){
+  var r=DATA[currentRezIdx], idx=currentRezIdx;
+  document.getElementById('rez-status').textContent='⏳ Se salvează...';
+  logToSheet(r, function(ok){ if(ok) markRezolvat(idx); });
+}
+function rezolvatAmbele(){
+  var r=DATA[currentRezIdx], idx=currentRezIdx;
+  window.open('https://wa.me/?text='+encodeURIComponent(buildWAMessage(r)),'_blank');
+  document.getElementById('rez-status').textContent='⏳ Se salvează în Sheets...';
+  logToSheet(r, function(ok){ if(ok){ markRezolvat(idx); setTimeout(closeRezolvat,1500); } });
+}
+
+// Filtrare
+function filtered(){ return DATA.filter(function(r){ return (!activeType||(r.ty||'?')===activeType)&&(!activeLoc||(r.l||'')===activeLoc); }); }
+function toggleType(type){ activeType=(activeType===type)?null:type; document.querySelectorAll('#typeGrid .card').forEach(function(el){ el.className='card'+(el.getAttribute('data-type')===activeType?' on':''); }); updateTable(); }
+function toggleLoc(loc){ activeLoc=(activeLoc===loc)?null:loc; document.querySelectorAll('#locGrid .card').forEach(function(el){ el.className='card'+(el.getAttribute('data-loc')===activeLoc?' on':''); }); updateTable(); }
+function clearFilters(){ activeType=null;activeLoc=null; document.querySelectorAll('.card').forEach(function(el){ el.className='card'; }); updateTable(); }
+
+function updateTable(){
+  var src=filtered();
+  var rows=src.map(function(r){
+    var i=DATA.indexOf(r);
+    var rowCls=r._rezolvat?' class="rezolvat"':'';
+    return '<tr'+rowCls+'>'+
+      '<td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span>'+
+      (r._rezolvat?'<button class="rezolvat-btn done" disabled>✓ Rezolvat</button>':'<button class="rezolvat-btn" data-idx="'+i+'">✅ Rezolvat</button>')+
+      '</td>'+
+      '<td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td>'+
+      '<td class="cp">'+s(r.l)+'</td><td class="cp">'+s(r.ty)+'</td>'+
+      '<td class="cp">'+s(r.d)+'</td><td class="cp">'+s(r.dp)+'</td>'+
+    '</tr>';
+  }).join('');
+  document.querySelector('#root tbody').innerHTML = rows || '<tr><td colspan="7" class="empty">Nu există tickete pentru filtrul selectat</td></tr>';
+  document.querySelectorAll('.tlink').forEach(function(el){ el.onclick=function(){ openPanel(parseInt(el.getAttribute('data-idx'))); }; });
+  document.querySelectorAll('td.cp').forEach(function(el){ el.onclick=function(){ cp(el.textContent||el.innerText,el); }; });
+  document.querySelectorAll('.rezolvat-btn:not(.done)').forEach(function(btn){ btn.onclick=function(e){ e.stopPropagation(); openRezolvat(parseInt(btn.getAttribute('data-idx'))); }; });
+  var parts=[]; if(activeType) parts.push('Tip: '+activeType); if(activeLoc) parts.push('Localitate: '+activeLoc);
+  var fbar=document.getElementById('fbar'); fbar.className=parts.length?'fbar on':'fbar';
+  document.getElementById('fbar-text').textContent='🔍 '+parts.join(' | ')+' ('+src.length+' tickete)';
+}
+
+function render(data){
+  DATA=data;
+  if(!data||!data.length){ document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Nu există date</div>'; return; }
+  var acc={},loc={},cnt={};
+  data.forEach(function(r){ if(r.a)acc[r.a]=1; if(r.l)loc[r.l]=(loc[r.l]||0)+1; var t=r.ty||'?';cnt[t]=(cnt[t]||0)+1; });
+  var locs=Object.keys(loc).sort();
+  var locsHtml=locs.map(function(l){ return '<div class="card" data-loc="'+l+'"><div class="cv">'+loc[l]+'</div><div class="cl">'+l+'</div></div>'; }).join('');
+  var types=Object.keys(cnt).sort(function(a,b){ return cnt[b]-cnt[a]; });
+  var typesHtml=types.map(function(t){ return '<div class="card" data-type="'+t+'"><div class="cv">'+cnt[t]+'</div><div class="cl">'+t+'</div></div>'; }).join('');
+  var rows=data.map(function(r,i){ return '<tr><td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span><button class="rezolvat-btn" data-idx="'+i+'">✅ Rezolvat</button></td><td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td><td class="cp">'+s(r.l)+'</td><td class="cp">'+s(r.ty)+'</td><td class="cp">'+s(r.d)+'</td><td class="cp">'+s(r.dp)+'</td></tr>'; }).join('');
+  document.getElementById('root').innerHTML=
+    '<div class="grid3"><div class="sc"><div class="sv">'+data.length+'</div><div class="sl">Total Tickete</div></div><div class="sc"><div class="sv">'+Object.keys(acc).length+'</div><div class="sl">Conturi</div></div><div class="sc"><div class="sv">'+locs.length+'</div><div class="sl">Localități</div></div></div>'+
+    '<div class="sec"><div class="sec-title">🏙 Localități — apasă pentru filtrare</div><div class="cards" id="locGrid">'+locsHtml+'</div></div>'+
+    '<div class="sec"><div class="sec-title">🏷 Tipuri — apasă pentru filtrare</div><div class="cards" id="typeGrid">'+typesHtml+'</div></div>'+
+    '<div class="fbar" id="fbar"><span id="fbar-text"></span><button onclick="clearFilters()">✕ Elimină filtru</button></div>'+
+    '<div class="tw"><table><thead><tr><th>Ticket</th><th>Account</th><th>Beneficiara</th><th>Localitate</th><th>Tip</th><th>Data initiere</th><th>Data programata</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  document.querySelectorAll('#locGrid .card').forEach(function(el){ el.onclick=function(){ toggleLoc(el.getAttribute('data-loc')); }; });
+  document.querySelectorAll('#typeGrid .card').forEach(function(el){ el.onclick=function(){ toggleType(el.getAttribute('data-type')); }; });
+  document.querySelectorAll('.tlink').forEach(function(el){ el.onclick=function(){ openPanel(parseInt(el.getAttribute('data-idx'))); }; });
+  document.querySelectorAll('td.cp').forEach(function(el){ el.onclick=function(){ cp(el.textContent||el.innerText,el); }; });
+  document.querySelectorAll('.rezolvat-btn:not(.done)').forEach(function(btn){ btn.onclick=function(e){ e.stopPropagation(); openRezolvat(parseInt(btn.getAttribute('data-idx'))); }; });
+}
+
+// Citire date via JSONP
+function load(){
+  var id = new URLSearchParams(window.location.search).get('id');
+  if(!id){ document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Link invalid</div>'; return; }
+  
+  var cbName = 'gasLoad' + id.replace(/[^a-z0-9]/gi,'');
+  var url = SCRIPT_URL + '?id=' + encodeURIComponent(id) + '&callback=' + cbName;
+  
+  var timer = setTimeout(function(){
+    delete window[cbName];
+    document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Eroare la încărcare.<br><button onclick="location.reload()" style="margin-top:16px;padding:8px 16px;background:#4a90e2;color:#fff;border:none;border-radius:6px;cursor:pointer">🔄 Încearcă din nou</button></div>';
+  }, 15000);
+  
+  window[cbName] = function(data){
+    clearTimeout(timer);
+    delete window[cbName];
+    if(data && data.error){ document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date negăsite. Generează un link nou.</div>'; return; }
+    if(Array.isArray(data) && data.length > 0){ render(data); return; }
+    document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date invalide.</div>';
+  };
+  
+  var sc = document.createElement('script');
+  sc.src = url;
+  sc.onerror = function(){
+    clearTimeout(timer);
+    delete window[cbName];
+    document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Eroare conexiune.</div>';
+  };
+  document.head.appendChild(sc);
+}
+
+load();
+</script>
+</body>
+</html>
