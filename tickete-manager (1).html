@@ -12,6 +12,10 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);padding:16px}
 .wrap{max-width:1200px;margin:0 auto}
 h1{text-align:center;font-size:26px;color:var(--pr);margin-bottom:20px}
+.setup-box{background:#fff8e1;border:1px solid #ffc107;border-radius:10px;padding:20px;margin-bottom:24px}
+.setup-box h3{color:#856404;margin-bottom:12px;font-size:15px}
+.setup-box p{color:#856404;font-size:13px;margin-bottom:10px;line-height:1.6}
+.setup-box input{width:100%;padding:10px 12px;border:1px solid #ffc107;border-radius:6px;font-size:13px;margin-bottom:10px;font-family:monospace}
 .upload-zone{border:2px dashed var(--br);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all .3s;margin-bottom:24px;background:var(--su)}
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--pr);background:rgba(74,144,226,.05)}
 .upload-icon{font-size:48px;margin-bottom:16px}
@@ -54,16 +58,14 @@ tr:hover td{background:rgba(74,144,226,.04)}
 .cp:hover{background:rgba(74,144,226,.08)!important}
 .copied{background:rgba(76,175,80,.2)!important;color:#4caf50!important}
 .empty{text-align:center;padding:24px;color:var(--t2);font-style:italic}
-/* Modal link */
 .modal-bg{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:200;justify-content:center;align-items:center;padding:16px}
 .modal-bg.on{display:flex}
-.modal{background:var(--su);border-radius:12px;padding:24px;max-width:500px;width:100%}
-.modal h2{font-size:16px;color:var(--pr);margin-bottom:12px}
+.modal{background:var(--su);border-radius:12px;padding:24px;max-width:520px;width:100%}
+.modal h2{font-size:16px;color:var(--pr);margin-bottom:8px}
 .modal p{font-size:13px;color:var(--t2);margin-bottom:12px}
 .modal input{width:100%;padding:10px 12px;border:1px solid var(--br);border-radius:6px;font-size:12px;font-family:monospace;margin-bottom:12px;color:var(--tx);background:rgba(74,144,226,.05)}
 .modal-btns{display:flex;gap:10px}
 .modal-btns button{flex:1}
-/* Panel detalii */
 #ov{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:100;justify-content:center;align-items:center;padding:16px}
 #ov.on{display:flex}
 #pan{background:var(--su);border-radius:12px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.25)}
@@ -79,12 +81,20 @@ tr:hover td{background:rgba(74,144,226,.04)}
 .fv:hover{color:var(--pr)}
 .fv.em{color:var(--t2);font-style:italic;cursor:default}
 .badge{display:inline-block;padding:2px 10px;border-radius:12px;background:rgba(74,144,226,.15);color:var(--pr);font-weight:500}
-.msg{text-align:center;padding:60px;color:var(--t2);font-size:18px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🎫 Tickete Manager</h1>
+
+  <!-- Setup box - se ascunde după configurare -->
+  <div class="setup-box" id="setupBox">
+    <h3>⚙️ Configurare necesară (o singură dată, 5 minute)</h3>
+    <p>Această aplicație are nevoie de un <strong>Google Apps Script</strong> gratuit pentru a genera linkuri WhatsApp. Urmează instrucțiunile din fișierul <strong>SETUP_GOOGLE_SCRIPT.md</strong>, apoi lipește URL-ul mai jos.</p>
+    <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="primary" onclick="saveScriptUrl()" style="width:100%">✅ Salvează și continuă</button>
+  </div>
+
   <div class="status" id="status"></div>
 
   <div class="upload-zone" id="uploadZone">
@@ -105,7 +115,9 @@ tr:hover td{background:rgba(74,144,226,.04)}
     <div class="fbar" id="fbar"><span id="fbar-text"></span><button onclick="clearFilters()">✕ Elimină filtru</button></div>
     <div class="controls">
       <button class="primary" id="shareBtn" onclick="shareLink()">💬 WhatsApp Link</button>
+      <button class="primary" onclick="openMap()">🗺️ Hartă</button>
       <button onclick="downloadCSV()">📥 CSV</button>
+      <button onclick="document.getElementById('setupBox').style.display=\'block\'">⚙️ Config</button>
       <button onclick="resetData()">🔄 Reset</button>
     </div>
     <div class="tw"><table>
@@ -115,11 +127,31 @@ tr:hover td{background:rgba(74,144,226,.04)}
   </div>
 </div>
 
-<!-- Modal link -->
+<!-- Map Modal -->
+<div class="modal-bg" id="mapModal" style="z-index:300">
+  <div style="background:var(--su);border-radius:12px;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--br);flex-shrink:0">
+      <h2 style="font-size:16px;color:var(--pr)">🗺️ Hartă Tickete</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="map-count" style="font-size:12px;color:var(--t2)"></span>
+        <button onclick="closeMap()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t2);padding:2px 6px">✕</button>
+      </div>
+    </div>
+    <div id="map-frame-container" style="flex:1;min-height:500px;position:relative">
+      <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2)">
+        <div style="font-size:32px;margin-bottom:8px">🗺️</div>
+        <div>Se încarcă harta...</div>
+      </div>
+      <iframe id="map-frame" style="width:100%;height:100%;border:none;display:none" allowfullscreen></iframe>
+    </div>
+    <div id="map-list" style="max-height:200px;overflow-y:auto;border-top:1px solid var(--br);flex-shrink:0"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="linkModal">
   <div class="modal">
     <h2>💬 Link pentru WhatsApp</h2>
-    <p>Trimite linkul — oricine îl deschide va vedea datele fără să fie nevoie de cont sau cheie.</p>
+    <p>Trimite linkul — oricine îl deschide va vedea datele.</p>
     <input type="text" id="linkInput" readonly>
     <div class="modal-btns">
       <button class="primary" onclick="copyLink()">📋 Copy</button>
@@ -129,7 +161,6 @@ tr:hover td{background:rgba(74,144,226,.04)}
   </div>
 </div>
 
-<!-- Panel detalii ticket -->
 <div id="ov">
   <div id="pan">
     <div class="ph"><h2 id="ptitle">Detalii</h2><button class="xb" id="xbtn">✕</button></div>
@@ -138,260 +169,240 @@ tr:hover td{background:rgba(74,144,226,.04)}
 </div>
 
 <script>
-var DATA = [];
-var activeType = null;
-var activeLoc = null;
+var DATA=[], activeType=null, activeLoc=null;
+var SCRIPT_URL = localStorage.getItem('gas_url') || 'https://script.google.com/macros/s/AKfycbxG6PtyTahCGXBZpnKzhn45Man-magAfg85CfgGu-mWSTBqoXUhfqL13LT5-ppBZWqU/exec';
+var BASE_URL = 'https://gabrielnita-netizen.github.io/tickete/rv.html';
 
-// ── Helpers ──────────────────────────────────────────────
-function s(v){ return (v||'').toString(); }
-function showStatus(msg, type, dur){
-  var el = document.getElementById('status');
-  el.textContent = msg; el.className = 'status on ' + type;
-  if(dur !== 0) setTimeout(function(){ el.classList.remove('on'); }, dur||4000);
-}
-function cp(txt, el){
-  var done = function(){ el.classList.add('copied'); setTimeout(function(){ el.classList.remove('copied'); },700); };
-  if(navigator.clipboard && navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(function(){ fb(txt); done(); }); }
-  else { fb(txt); done(); }
-}
-function fb(txt){
-  var t=document.createElement('textarea'); t.value=txt; t.style.cssText='position:fixed;opacity:0';
-  document.body.appendChild(t); t.focus(); t.select();
-  try{ document.execCommand('copy'); }catch(e){} document.body.removeChild(t);
+// Init
+if(SCRIPT_URL) document.getElementById('setupBox').style.display='none';
+
+function saveScriptUrl(){
+  var url = document.getElementById('scriptUrl').value.trim();
+  if(!url || !url.includes('script.google.com')){showStatus('❌ URL invalid — trebuie să fie de la script.google.com','err');return;}
+  SCRIPT_URL = url;
+  localStorage.setItem('gas_url', url);
+  document.getElementById('setupBox').style.display='none';
+  showStatus('✅ Configurat! Acum poți genera linkuri WhatsApp.','ok');
 }
 
-// ── Upload ────────────────────────────────────────────────
-var uz = document.getElementById('uploadZone');
-var fi = document.getElementById('fileInput');
-uz.onclick = function(){ fi.click(); };
-uz.ondragover = function(e){ e.preventDefault(); uz.classList.add('drag-over'); };
-uz.ondragleave = function(){ uz.classList.remove('drag-over'); };
-uz.ondrop = function(e){ e.preventDefault(); uz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); };
-fi.onchange = function(){ handleFiles(fi.files); };
+function s(v){return (v||'').toString();}
+function showStatus(msg,type,dur){var el=document.getElementById('status');el.textContent=msg;el.className='status on '+type;if(dur!==0)setTimeout(function(){el.classList.remove('on');},dur||4000);}
+function cp(txt,el){var done=function(){el.classList.add('copied');setTimeout(function(){el.classList.remove('copied');},700);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(function(){fb(txt);done();});}else{fb(txt);done();}}
+function fb(txt){var t=document.createElement('textarea');t.value=txt;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.focus();t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(t);}
+
+var uz=document.getElementById('uploadZone'),fi=document.getElementById('fileInput');
+uz.onclick=function(){fi.click();};
+uz.ondragover=function(e){e.preventDefault();uz.classList.add('drag-over');};
+uz.ondragleave=function(){uz.classList.remove('drag-over');};
+uz.ondrop=function(e){e.preventDefault();uz.classList.remove('drag-over');handleFiles(e.dataTransfer.files);};
+fi.onchange=function(){handleFiles(fi.files);};
 
 function handleFiles(files){
-  if(!files[0]) return;
-  if(!files[0].name.toLowerCase().match(/\.xlsx?$/)) { showStatus('❌ Selectează .xls sau .xlsx','err'); return; }
+  if(!files[0])return;
+  if(!files[0].name.toLowerCase().match(/\.xlsx?$/)){showStatus('❌ Selectează .xls sau .xlsx','err');return;}
   showStatus('⏳ Se procesează...','inf',0);
-  var reader = new FileReader();
-  reader.onload = function(e){
+  var reader=new FileReader();
+  reader.onload=function(e){
     try{
-      var wb = XLSX.read(new Uint8Array(e.target.result), {type:'array', defval:''});
-      var raw = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''});
-      if(!raw.length){ showStatus('❌ Fișierul e gol','err'); return; }
+      var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',defval:''});
+      var raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      if(!raw.length){showStatus('❌ Fișierul e gol','err');return;}
       processData(raw);
       showStatus('✓ Încărcat '+raw.length+' tickete','ok');
-    } catch(err){ showStatus('❌ '+err.message,'err'); }
+    }catch(err){showStatus('❌ '+err.message,'err');}
   };
   reader.readAsArrayBuffer(files[0]);
 }
 
-function g(row){ for(var i=1;i<arguments.length;i++){ var v=row[arguments[i]]; if(v!=null && v!=='') return String(v).trim(); } return ''; }
+function g(row){for(var i=1;i<arguments.length;i++){var v=row[arguments[i]];if(v!=null&&v!=='')return String(v).trim();}return '';}
 
 function processData(raw){
-  DATA = raw.filter(function(r){ return Object.values(r).some(function(v){ return v!==''; }); }).map(function(r){
-    return {
-      t:  g(r,'numar'), a: g(r,'obj__hexid'),
-      b:  g(r,'obj__client__denumire'), ob: g(r,'obj__name'),
-      l:  g(r,'obj__loc'), ad: g(r,'obj__address'),
-      j:  g(r,'obj__jud'), ty: g(r,'type'),
-      d:  cvDate(g(r,'obj__objevents__last_date')),
-      dp: cvDate(g(r,'date_prg')), n: g(r,'note')
-    };
+  DATA=raw.filter(function(r){return Object.values(r).some(function(v){return v!=='';});}).map(function(r){
+    return {t:g(r,'numar'),a:g(r,'obj__hexid'),b:g(r,'obj__client__denumire'),ob:g(r,'obj__name'),
+      l:g(r,'obj__loc'),ad:g(r,'obj__address'),j:g(r,'obj__jud'),ty:g(r,'type'),
+      d:cvDate(g(r,'obj__objevents__last_date')),dp:cvDate(g(r,'date_prg')),n:g(r,'note')};
   });
-  activeType = null; activeLoc = null;
+  activeType=null;activeLoc=null;
   buildStats();
-  document.getElementById('statsArea').style.display = 'block';
-  document.getElementById('uploadZone').style.display = 'none';
+  document.getElementById('statsArea').style.display='block';
+  document.getElementById('uploadZone').style.display='none';
 }
 
 function cvDate(v){
-  if(!v) return '';
-  if(typeof v==='string' && /^\d{2}\.\d{2}\.\d{4}$/.test(v)) return v;
-  if(typeof v==='number' && v>0){ var d=new Date((v-1)*86400000+new Date(1900,0,1).getTime()); if(!isNaN(d)) return d.toLocaleDateString('ro-RO'); }
+  if(!v)return '';
+  if(typeof v==='string'&&/^\d{2}\.\d{2}\.\d{4}$/.test(v))return v;
+  if(typeof v==='number'&&v>0){var d=new Date((v-1)*86400000+new Date(1900,0,1).getTime());if(!isNaN(d))return d.toLocaleDateString('ro-RO');}
   return '';
 }
 
-// ── Stats & Cards ─────────────────────────────────────────
 function buildStats(){
-  var acc={}, loc={}, cnt={};
-  DATA.forEach(function(r){
-    if(r.a) acc[r.a]=1;
-    if(r.l) loc[r.l]=(loc[r.l]||0)+1;
-    var t=r.ty||'?'; cnt[t]=(cnt[t]||0)+1;
-  });
-  document.getElementById('cTotal').textContent = DATA.length;
-  document.getElementById('cConturi').textContent = Object.keys(acc).length;
-  document.getElementById('cLoc').textContent = Object.keys(loc).length;
-
-  var locs = Object.keys(loc).sort();
-  document.getElementById('locGrid').innerHTML = locs.map(function(l){
-    return '<div class="card" data-loc="'+l+'"><div class="cv">'+loc[l]+'</div><div class="cl">'+l+'</div></div>';
-  }).join('');
-
-  var types = Object.keys(cnt).sort(function(a,b){ return cnt[b]-cnt[a]; });
-  document.getElementById('typeGrid').innerHTML = types.map(function(t){
-    return '<div class="card" data-type="'+t+'"><div class="cv">'+cnt[t]+'</div><div class="cl">'+t+'</div></div>';
-  }).join('');
-
-  document.querySelectorAll('#locGrid .card').forEach(function(el){
-    el.onclick = function(){ toggleLoc(el.getAttribute('data-loc')); };
-  });
-  document.querySelectorAll('#typeGrid .card').forEach(function(el){
-    el.onclick = function(){ toggleType(el.getAttribute('data-type')); };
-  });
-
+  var acc={},loc={},cnt={};
+  DATA.forEach(function(r){if(r.a)acc[r.a]=1;if(r.l)loc[r.l]=(loc[r.l]||0)+1;var t=r.ty||'?';cnt[t]=(cnt[t]||0)+1;});
+  document.getElementById('cTotal').textContent=DATA.length;
+  document.getElementById('cConturi').textContent=Object.keys(acc).length;
+  document.getElementById('cLoc').textContent=Object.keys(loc).length;
+  var locs=Object.keys(loc).sort();
+  document.getElementById('locGrid').innerHTML=locs.map(function(l){return '<div class="card" data-loc="'+l+'"><div class="cv">'+loc[l]+'</div><div class="cl">'+l+'</div></div>';}).join('');
+  var types=Object.keys(cnt).sort(function(a,b){return cnt[b]-cnt[a];});
+  document.getElementById('typeGrid').innerHTML=types.map(function(t){return '<div class="card" data-type="'+t+'"><div class="cv">'+cnt[t]+'</div><div class="cl">'+t+'</div></div>';}).join('');
+  document.querySelectorAll('#locGrid .card').forEach(function(el){el.onclick=function(){toggleLoc(el.getAttribute('data-loc'));};});
+  document.querySelectorAll('#typeGrid .card').forEach(function(el){el.onclick=function(){toggleType(el.getAttribute('data-type'));};});
   updateTable();
 }
 
-// ── Filter ────────────────────────────────────────────────
-function filtered(){
-  return DATA.filter(function(r){
-    return (!activeType || (r.ty||'?')===activeType) && (!activeLoc || (r.l||'')===activeLoc);
-  });
-}
+function filtered(){return DATA.filter(function(r){return (!activeType||(r.ty||'?')===activeType)&&(!activeLoc||(r.l||'')===activeLoc);});}
+function toggleType(type){activeType=(activeType===type)?null:type;document.querySelectorAll('#typeGrid .card').forEach(function(el){el.className='card'+(el.getAttribute('data-type')===activeType?' on':'');});updateTable();}
+function toggleLoc(loc){activeLoc=(activeLoc===loc)?null:loc;document.querySelectorAll('#locGrid .card').forEach(function(el){el.className='card'+(el.getAttribute('data-loc')===activeLoc?' on':'');});updateTable();}
+function clearFilters(){activeType=null;activeLoc=null;document.querySelectorAll('.card').forEach(function(el){el.className='card';});updateTable();}
 
-function toggleType(type){
-  activeType = (activeType===type) ? null : type;
-  document.querySelectorAll('#typeGrid .card').forEach(function(el){
-    el.className = 'card'+(el.getAttribute('data-type')===activeType?' on':'');
-  });
-  updateTable();
-}
-
-function toggleLoc(loc){
-  activeLoc = (activeLoc===loc) ? null : loc;
-  document.querySelectorAll('#locGrid .card').forEach(function(el){
-    el.className = 'card'+(el.getAttribute('data-loc')===activeLoc?' on':'');
-  });
-  updateTable();
-}
-
-function clearFilters(){
-  activeType=null; activeLoc=null;
-  document.querySelectorAll('.card').forEach(function(el){ el.className='card'; });
-  updateTable();
-}
-
-// ── Table ─────────────────────────────────────────────────
 function updateTable(){
-  var src = filtered();
-  var rows = src.map(function(r){
-    var i = DATA.indexOf(r);
-    return '<tr>'+
-      '<td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span></td>'+
-      '<td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td>'+
-      '<td class="cp">'+s(r.l)+'</td><td class="cp">'+s(r.ty)+'</td>'+
-      '<td class="cp">'+s(r.d)+'</td><td class="cp">'+s(r.dp)+'</td>'+
-    '</tr>';
-  }).join('');
-
-  document.getElementById('tbody').innerHTML = rows || '<tr><td colspan="7" class="empty">Nu există tickete pentru filtrul selectat</td></tr>';
-
-  document.querySelectorAll('.tlink').forEach(function(el){
-    el.onclick = function(){ openPanel(parseInt(el.getAttribute('data-idx'))); };
-  });
-  document.querySelectorAll('td.cp').forEach(function(el){
-    el.onclick = function(){ cp(el.textContent||el.innerText, el); };
-  });
-
-  var parts=[];
-  if(activeType) parts.push('Tip: '+activeType);
-  if(activeLoc)  parts.push('Localitate: '+activeLoc);
-  var fbar = document.getElementById('fbar');
-  fbar.className = parts.length ? 'fbar on' : 'fbar';
-  document.getElementById('fbar-text').textContent = '🔍 '+parts.join(' | ')+' ('+src.length+' tickete)';
+  var src=filtered();
+  var rows=src.map(function(r){var i=DATA.indexOf(r);return '<tr><td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span></td><td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td><td class="cp">'+s(r.l)+'</td><td class="cp">'+s(r.ty)+'</td><td class="cp">'+s(r.d)+'</td><td class="cp">'+s(r.dp)+'</td></tr>';}).join('');
+  document.getElementById('tbody').innerHTML=rows||'<tr><td colspan="7" class="empty">Nu există tickete pentru filtrul selectat</td></tr>';
+  document.querySelectorAll('.tlink').forEach(function(el){el.onclick=function(){openPanel(parseInt(el.getAttribute('data-idx')));};});
+  document.querySelectorAll('td.cp').forEach(function(el){el.onclick=function(){cp(el.textContent||el.innerText,el);};});
+  var parts=[];if(activeType)parts.push('Tip: '+activeType);if(activeLoc)parts.push('Localitate: '+activeLoc);
+  var fbar=document.getElementById('fbar');fbar.className=parts.length?'fbar on':'fbar';
+  document.getElementById('fbar-text').textContent='🔍 '+parts.join(' | ')+' ('+src.length+' tickete)';
 }
 
-// ── Panel detalii ─────────────────────────────────────────
-document.getElementById('xbtn').onclick = function(){ document.getElementById('ov').className=''; };
-document.getElementById('ov').onclick = function(e){ if(e.target===this) this.className=''; };
+document.getElementById('xbtn').onclick=function(){document.getElementById('ov').className='';};
+document.getElementById('ov').onclick=function(e){if(e.target===this)this.className='';};
 
 function openPanel(i){
-  var r=DATA[i]; if(!r) return;
+  var r=DATA[i];if(!r)return;
   document.getElementById('ptitle').textContent='Ticket #'+s(r.t);
-  var fields=[
-    ['Numar ticket',r.t,false],['Account',r.a,false],['Beneficiara',r.b,false],
-    ['Obiectiv',r.ob,false],['Localitate',r.l,false],['Adresa',r.ad,false],
-    ['Judet',r.j,false],['Tip ticket',r.ty,true],
-    ['Data initiere',r.d,false],['Data programata',r.dp,false],['Nota',r.n,false]
-  ];
+  var fields=[['Numar ticket',r.t,false],['Account',r.a,false],['Beneficiara',r.b,false],['Obiectiv',r.ob,false],['Localitate',r.l,false],['Adresa',r.ad,false],['Judet',r.j,false],['Tip ticket',r.ty,true],['Data initiere',r.d,false],['Data programata',r.dp,false],['Nota',r.n,false]];
   var html='';
   for(var k=0;k<fields.length;k++){
-    var lbl=fields[k][0], val=s(fields[k][1]), badge=fields[k][2], vh;
-    if(!val){ vh='<span class="fv em">—</span>'; }
-    else if(badge){ vh='<span class="fv"><span class="badge">'+val+'</span></span>'; }
-    else { vh='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+val.replace(/\n/g,'<br>')+'</span>'; }
+    var lbl=fields[k][0],val=s(fields[k][1]),badge=fields[k][2],vh;
+    if(!val){vh='<span class="fv em">—</span>';}
+    else if(badge){vh='<span class="fv"><span class="badge">'+val+'</span></span>';}
+    else{vh='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+val.replace(/\n/g,'<br>')+'</span>';}
     html+='<div class="fr"><span class="fl">'+lbl+'</span>'+vh+'</div>';
   }
   document.getElementById('pbody').innerHTML=html;
-  document.querySelectorAll('#pbody .fv[data-val]').forEach(function(el){
-    el.onclick=function(){ cp(el.getAttribute('data-val'),el); };
-  });
+  document.querySelectorAll('#pbody .fv[data-val]').forEach(function(el){el.onclick=function(){cp(el.getAttribute('data-val'),el);};});
   document.getElementById('ov').className='on';
 }
 
-// ── Share via GitHub Gist (public, fara autentificare) ────
 function shareLink(){
-  if(!DATA.length){ showStatus('❌ Niciun date','err'); return; }
-  var btn = document.getElementById('shareBtn');
-  btn.disabled=true; btn.textContent='⏳ Se salvează...';
+  if(!DATA.length){showStatus('❌ Niciun date','err');return;}
+  if(!SCRIPT_URL){showStatus('❌ Configurează mai întâi Google Apps Script','err');document.getElementById('setupBox').style.display='block';return;}
+  var btn=document.getElementById('shareBtn');
+  btn.disabled=true;btn.textContent='⏳ Se salvează...';
+  // Salvare via form POST invizibil (singura metoda garantata cu GAS)
+  var id = Math.random().toString(36).substr(2,8);
+  
+  // Cream un iframe invizibil ca target
+  var iframeName = 'gas_frame_' + id;
+  var iframe = document.createElement('iframe');
+  iframe.name = iframeName;
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
 
-  var payload = JSON.stringify({
-    description: 'Tickete Raport',
-    public: true,
-    files: {
-      'tickete.json': {
-        content: JSON.stringify({data: DATA})
-      }
-    }
-  });
+  // Cream form care submite la GAS
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = SCRIPT_URL;
+  form.target = iframeName;
+  form.style.display = 'none';
 
-  var xhr = new XMLHttpRequest();
-  xhr.open('POST', 'https://api.github.com/gists', true);
-  xhr.setRequestHeader('Content-Type','application/json');
-  xhr.setRequestHeader('Accept','application/vnd.github.v3+json');
-  xhr.onreadystatechange = function(){
-    if(xhr.readyState!==4) return;
-    if(xhr.status===201){
-      try{
-        var res = JSON.parse(xhr.responseText);
-        var rawUrl = res.files['tickete.json'].raw_url;
-        var gistId = res.id;
-        var link = 'https://gabrielnita-netizen.github.io/tickete/raport.html?gist='+gistId;
-        document.getElementById('linkInput').value = link;
-        document.getElementById('linkModal').className = 'modal-bg on';
-        showStatus('✓ Link generat!','ok');
-      } catch(e){
-        showStatus('❌ Eroare: '+e.message,'err');
-      }
-    } else {
-      showStatus('❌ Eroare server ('+xhr.status+')','err');
-    }
+  var inputId = document.createElement('input');
+  inputId.name = 'id'; inputId.value = id;
+  form.appendChild(inputId);
+
+  var inputData = document.createElement('input');
+  inputData.name = 'data'; inputData.value = JSON.stringify(DATA);
+  form.appendChild(inputData);
+
+  document.body.appendChild(form);
+
+  // Afisam linkul imediat (GAS salveaza in background)
+  setTimeout(function() {
+    var link = BASE_URL + '?id=' + id;
+    document.getElementById('linkInput').value = link;
+    document.getElementById('linkModal').className = 'modal-bg on';
+    showStatus('✓ Link generat!','ok');
     btn.disabled=false; btn.textContent='💬 WhatsApp Link';
-  };
-  xhr.onerror=function(){ showStatus('❌ Eroare conexiune','err'); btn.disabled=false; btn.textContent='💬 WhatsApp Link'; };
-  xhr.send(payload);
+    // Cleanup
+    document.body.removeChild(form);
+    setTimeout(function(){ document.body.removeChild(iframe); }, 5000);
+  }, 500);
+
+  form.submit();
 }
 
-function copyLink(){ cp(document.getElementById('linkInput').value, document.getElementById('linkInput')); showStatus('✓ Link copiat!','ok'); }
-function openWA(){ window.open('https://wa.me/?text='+encodeURIComponent('🎫 Raport tickete:\n'+document.getElementById('linkInput').value),'_blank'); }
-function closeLink(){ document.getElementById('linkModal').className='modal-bg'; }
-document.getElementById('linkModal').onclick = function(e){ if(e.target===this) closeLink(); };
+function copyLink(){cp(document.getElementById('linkInput').value,document.getElementById('linkInput'));showStatus('✓ Link copiat!','ok');}
+function openWA(){window.open('https://wa.me/?text='+encodeURIComponent('🎫 Raport tickete:\n'+document.getElementById('linkInput').value),'_blank');}
+function closeLink(){document.getElementById('linkModal').className='modal-bg';}
+document.getElementById('linkModal').onclick=function(e){if(e.target===this)closeLink();};
 
 function downloadCSV(){
-  if(!DATA.length) return;
+  if(!DATA.length)return;
   var h=['Ticket','Account','Beneficiara','Localitate','Tip','Data initiere','Data programata'];
-  var csv=[h.join(',')].concat(DATA.map(function(r){ return [r.t,r.a,r.b,r.l,r.ty,r.d,r.dp].map(function(v){ return '"'+v+'"'; }).join(','); })).join('\n');
-  var a=document.createElement('a'); a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'})); a.download='tickete.csv'; a.click();
+  var csv=[h.join(',')].concat(DATA.map(function(r){return [r.t,r.a,r.b,r.l,r.ty,r.d,r.dp].map(function(v){return '"'+v+'"';}).join(',');})).join('\n');
+  var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='tickete.csv';a.click();
 }
 
+function openMap(){
+  if(!DATA.length){ showStatus('❌ Niciun date','err'); return; }
+
+  var src = (typeof filteredData !== 'undefined' && filteredData.length) ? filteredData : DATA;
+  document.getElementById('map-count').textContent = src.length + ' tickete';
+
+  // Lista tickete cu link Google Maps pentru fiecare
+  var listHtml = src.map(function(r, i){
+    var addr = s(r.ad) + ', ' + s(r.l);
+    var gmUrl = 'https://www.google.com/maps/search/' + encodeURIComponent(addr + ', Romania');
+    var wazeUrl = 'https://waze.com/ul?q=' + encodeURIComponent(addr + ', Romania');
+    var color = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6'][i % 6];
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--br);font-size:12px">' +
+      '<span style="background:'+color+';color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700">'+(i+1)+'</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + s(r.t) + ' — ' + s(r.b) + '</div>' +
+        '<div style="color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + addr + ' <span style="background:rgba(74,144,226,.1);color:var(--pr);border-radius:3px;padding:1px 5px;font-size:10px">' + s(r.ty) + '</span></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:4px;flex-shrink:0">' +
+        '<a href="' + gmUrl + '" target="_blank" style="background:#4285f4;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none;white-space:nowrap">📍 Maps</a>' +
+        '<a href="' + wazeUrl + '" target="_blank" style="background:#33ccff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none;white-space:nowrap">🚗 Waze</a>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('map-list').innerHTML = listHtml;
+
+  // OpenStreetMap embed - gratuit, fara API key
+  // Centrat pe prima localitate din lista
+  var firstLoc = s(src[0].l) + ', Romania';
+  var osmSrc = 'https://www.openstreetmap.org/export/embed.html?bbox=20.0,44.0,23.0,46.5&layer=mapnik&marker=45.3,21.9';
+
+  // Folosim frame cu OpenStreetMap
+  var frameHtml = '<iframe src="https://www.openstreetmap.org/export/embed.html?bbox=20.5,44.2,23.5,46.3&layer=mapnik" style="width:100%;height:100%;border:none" loading="lazy"></iframe>';
+  document.getElementById('map-frame-container').innerHTML =
+    frameHtml +
+    '<div style="position:absolute;top:8px;right:8px;background:var(--su);border-radius:8px;padding:8px 12px;font-size:11px;color:var(--t2);box-shadow:0 2px 8px rgba(0,0,0,.15)">' +
+      '📍 Click <b>Maps</b> sau <b>Waze</b> din lista de mai jos pentru navigare' +
+    '</div>';
+
+  document.getElementById('mapModal').className = 'modal-bg on';
+}
+
+function closeMap(){
+  document.getElementById('mapModal').className = 'modal-bg';
+  document.getElementById('map-frame-container').innerHTML =
+    '<div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2)"><div style="font-size:32px;margin-bottom:8px">🗺️</div><div>Se încarcă harta...</div></div>' +
+    '<iframe id="map-frame" style="width:100%;height:100%;border:none;display:none"></iframe>';
+}
+
+document.getElementById('mapModal').onclick = function(e){ if(e.target===this) closeMap(); };
+
 function resetData(){
-  if(!confirm('Ștergi datele?')) return;
-  DATA=[]; activeType=null; activeLoc=null;
+  if(!confirm('Ștergi datele?'))return;
+  DATA=[];activeType=null;activeLoc=null;
   document.getElementById('statsArea').style.display='none';
   document.getElementById('uploadZone').style.display='block';
-  fi.value=''; showStatus('✓ Date șterse','ok');
+  fi.value='';showStatus('✓ Date șterse','ok');
 }
 </script>
 </body>
