@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Tickete Manager</title>
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/lz-string@1.5.0/libs/lz-string.min.js"></script>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 :root{--pr:#4a90e2;--bg:#f5f5f1;--su:#fff;--tx:#1a1a1a;--t2:#666;--br:#ddd}
@@ -13,6 +12,10 @@
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);color:var(--tx);padding:16px}
 .wrap{max-width:1200px;margin:0 auto}
 h1{text-align:center;font-size:26px;color:var(--pr);margin-bottom:20px}
+.setup-box{background:#fff8e1;border:1px solid #ffc107;border-radius:10px;padding:20px;margin-bottom:24px}
+.setup-box h3{color:#856404;margin-bottom:12px;font-size:15px}
+.setup-box p{color:#856404;font-size:13px;margin-bottom:10px;line-height:1.6}
+.setup-box input{width:100%;padding:10px 12px;border:1px solid #ffc107;border-radius:6px;font-size:13px;margin-bottom:10px;font-family:monospace}
 .upload-zone{border:2px dashed var(--br);border-radius:12px;padding:40px;text-align:center;cursor:pointer;transition:all .3s;margin-bottom:24px;background:var(--su)}
 .upload-zone:hover,.upload-zone.drag-over{border-color:var(--pr);background:rgba(74,144,226,.05)}
 .upload-icon{font-size:48px;margin-bottom:16px}
@@ -63,9 +66,6 @@ tr:hover td{background:rgba(74,144,226,.04)}
 .modal input{width:100%;padding:10px 12px;border:1px solid var(--br);border-radius:6px;font-size:12px;font-family:monospace;margin-bottom:12px;color:var(--tx);background:rgba(74,144,226,.05)}
 .modal-btns{display:flex;gap:10px}
 .modal-btns button{flex:1}
-.link-size{font-size:11px;margin-bottom:10px}
-.link-size.ok{color:#4caf50}
-.link-size.warn{color:#ff9800}
 #ov{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:100;justify-content:center;align-items:center;padding:16px}
 #ov.on{display:flex}
 #pan{background:var(--su);border-radius:12px;width:100%;max-width:500px;max-height:88vh;overflow-y:auto;box-shadow:0 8px 32px rgba(0,0,0,.25)}
@@ -81,19 +81,29 @@ tr:hover td{background:rgba(74,144,226,.04)}
 .fv:hover{color:var(--pr)}
 .fv.em{color:var(--t2);font-style:italic;cursor:default}
 .badge{display:inline-block;padding:2px 10px;border-radius:12px;background:rgba(74,144,226,.15);color:var(--pr);font-weight:500}
-.msg{text-align:center;padding:60px;color:var(--t2);font-size:18px}
 </style>
 </head>
 <body>
 <div class="wrap">
   <h1>🎫 Tickete Manager</h1>
+
+  <!-- Setup box - se ascunde după configurare -->
+  <div class="setup-box" id="setupBox">
+    <h3>⚙️ Configurare necesară (o singură dată, 5 minute)</h3>
+    <p>Această aplicație are nevoie de un <strong>Google Apps Script</strong> gratuit pentru a genera linkuri WhatsApp. Urmează instrucțiunile din fișierul <strong>SETUP_GOOGLE_SCRIPT.md</strong>, apoi lipește URL-ul mai jos.</p>
+    <input type="text" id="scriptUrl" placeholder="https://script.google.com/macros/s/.../exec">
+    <button class="primary" onclick="saveScriptUrl()" style="width:100%">✅ Salvează și continuă</button>
+  </div>
+
   <div class="status" id="status"></div>
+
   <div class="upload-zone" id="uploadZone">
     <div class="upload-icon">📁</div>
     <h2>Încarcă fișierul Excel</h2>
     <p>Drag & drop .xls sau .xlsx</p>
     <input type="file" id="fileInput" accept=".xls,.xlsx">
   </div>
+
   <div id="statsArea" style="display:none">
     <div class="grid3">
       <div class="sc"><div class="sv" id="cTotal">0</div><div class="sl">Total Tickete</div></div>
@@ -105,7 +115,9 @@ tr:hover td{background:rgba(74,144,226,.04)}
     <div class="fbar" id="fbar"><span id="fbar-text"></span><button onclick="clearFilters()">✕ Elimină filtru</button></div>
     <div class="controls">
       <button class="primary" id="shareBtn" onclick="shareLink()">💬 WhatsApp Link</button>
+      <button class="primary" onclick="openMap()">🗺️ Hartă</button>
       <button onclick="downloadCSV()">📥 CSV</button>
+      <button onclick="document.getElementById('setupBox').style.display=\'block\'">⚙️ Config</button>
       <button onclick="resetData()">🔄 Reset</button>
     </div>
     <div class="tw"><table>
@@ -115,11 +127,34 @@ tr:hover td{background:rgba(74,144,226,.04)}
   </div>
 </div>
 
+<!-- Map Modal -->
+<div class="modal-bg" id="mapModal" style="z-index:300">
+  <div style="background:var(--su);border-radius:12px;width:100%;max-width:900px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--br);flex-shrink:0">
+      <h2 style="font-size:16px;color:var(--pr)">🗺️ Hartă Tickete</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="map-count" style="font-size:12px;color:var(--t2)"></span>
+        <button onclick="closeMap()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t2);padding:2px 6px">✕</button>
+      </div>
+    </div>
+    <div id="map-frame-container" style="flex:1;min-height:500px;position:relative">
+      <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2)">
+        <div style="font-size:32px;margin-bottom:8px">🗺️</div>
+        <div>Se încarcă harta...</div>
+      </div>
+      <iframe id="map-frame" style="width:100%;height:100%;border:none;display:none" allowfullscreen></iframe>
+    </div>
+    <div id="map-hint" style="display:none;padding:8px 16px;font-size:12px;color:var(--t2);background:rgba(74,144,226,.05);border-top:1px solid var(--br);text-align:center;flex-shrink:0">
+      📍 Click <b>Maps</b> sau <b>Waze</b> din lista de mai jos pentru navigare
+    </div>
+    <div id="map-list" style="max-height:200px;overflow-y:auto;border-top:1px solid var(--br);flex-shrink:0"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="linkModal">
   <div class="modal">
     <h2>💬 Link pentru WhatsApp</h2>
-    <p>Copiază linkul și trimite pe WhatsApp. Se deschide direct în browser.</p>
-    <div class="link-size" id="linkSize"></div>
+    <p>Trimite linkul — oricine îl deschide va vedea datele.</p>
     <input type="text" id="linkInput" readonly>
     <div class="modal-btns">
       <button class="primary" onclick="copyLink()">📋 Copy</button>
@@ -138,22 +173,35 @@ tr:hover td{background:rgba(74,144,226,.04)}
 
 <script>
 var DATA=[], activeType=null, activeLoc=null;
-var BASE_URL='https://gabrielnita-netizen.github.io/tickete/raport.html';
+var SCRIPT_URL = localStorage.getItem('gas_url') || 'https://script.google.com/macros/s/AKfycbxG6PtyTahCGXBZpnKzhn45Man-magAfg85CfgGu-mWSTBqoXUhfqL13LT5-ppBZWqU/exec';
+var BASE_URL = 'https://gabrielnita-netizen.github.io/tickete/rv.html';
 
-function s(v){ return (v||'').toString(); }
-function showStatus(msg,type,dur){ var el=document.getElementById('status'); el.textContent=msg; el.className='status on '+type; if(dur!==0) setTimeout(function(){ el.classList.remove('on'); },dur||4000); }
-function cp(txt,el){ var done=function(){ el.classList.add('copied'); setTimeout(function(){ el.classList.remove('copied'); },700); }; if(navigator.clipboard&&navigator.clipboard.writeText){ navigator.clipboard.writeText(txt).then(done).catch(function(){ fb(txt);done(); }); } else{ fb(txt);done(); } }
-function fb(txt){ var t=document.createElement('textarea'); t.value=txt; t.style.cssText='position:fixed;opacity:0'; document.body.appendChild(t); t.focus(); t.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(t); }
+// Init
+if(SCRIPT_URL) document.getElementById('setupBox').style.display='none';
 
-var uz=document.getElementById('uploadZone'), fi=document.getElementById('fileInput');
-uz.onclick=function(){ fi.click(); };
-uz.ondragover=function(e){ e.preventDefault(); uz.classList.add('drag-over'); };
-uz.ondragleave=function(){ uz.classList.remove('drag-over'); };
-uz.ondrop=function(e){ e.preventDefault(); uz.classList.remove('drag-over'); handleFiles(e.dataTransfer.files); };
-fi.onchange=function(){ handleFiles(fi.files); };
+function saveScriptUrl(){
+  var url = document.getElementById('scriptUrl').value.trim();
+  if(!url || !url.includes('script.google.com')){showStatus('❌ URL invalid — trebuie să fie de la script.google.com','err');return;}
+  SCRIPT_URL = url;
+  localStorage.setItem('gas_url', url);
+  document.getElementById('setupBox').style.display='none';
+  showStatus('✅ Configurat! Acum poți genera linkuri WhatsApp.','ok');
+}
+
+function s(v){return (v||'').toString();}
+function showStatus(msg,type,dur){var el=document.getElementById('status');el.textContent=msg;el.className='status on '+type;if(dur!==0)setTimeout(function(){el.classList.remove('on');},dur||4000);}
+function cp(txt,el){var done=function(){el.classList.add('copied');setTimeout(function(){el.classList.remove('copied');},700);};if(navigator.clipboard&&navigator.clipboard.writeText){navigator.clipboard.writeText(txt).then(done).catch(function(){fb(txt);done();});}else{fb(txt);done();}}
+function fb(txt){var t=document.createElement('textarea');t.value=txt;t.style.cssText='position:fixed;opacity:0';document.body.appendChild(t);t.focus();t.select();try{document.execCommand('copy');}catch(e){}document.body.removeChild(t);}
+
+var uz=document.getElementById('uploadZone'),fi=document.getElementById('fileInput');
+uz.onclick=function(){fi.click();};
+uz.ondragover=function(e){e.preventDefault();uz.classList.add('drag-over');};
+uz.ondragleave=function(){uz.classList.remove('drag-over');};
+uz.ondrop=function(e){e.preventDefault();uz.classList.remove('drag-over');handleFiles(e.dataTransfer.files);};
+fi.onchange=function(){handleFiles(fi.files);};
 
 function handleFiles(files){
-  if(!files[0]) return;
+  if(!files[0])return;
   if(!files[0].name.toLowerCase().match(/\.xlsx?$/)){showStatus('❌ Selectează .xls sau .xlsx','err');return;}
   showStatus('⏳ Se procesează...','inf',0);
   var reader=new FileReader();
@@ -169,7 +217,7 @@ function handleFiles(files){
   reader.readAsArrayBuffer(files[0]);
 }
 
-function g(row){ for(var i=1;i<arguments.length;i++){var v=row[arguments[i]];if(v!=null&&v!=='')return String(v).trim();}return ''; }
+function g(row){for(var i=1;i<arguments.length;i++){var v=row[arguments[i]];if(v!=null&&v!=='')return String(v).trim();}return '';}
 
 function processData(raw){
   DATA=raw.filter(function(r){return Object.values(r).some(function(v){return v!=='';});}).map(function(r){
@@ -241,34 +289,51 @@ function openPanel(i){
   document.getElementById('ov').className='on';
 }
 
-// ── Share cu LZ-String compresie ──────────────────────────
 function shareLink(){
   if(!DATA.length){showStatus('❌ Niciun date','err');return;}
+  if(!SCRIPT_URL){showStatus('❌ Configurează mai întâi Google Apps Script','err');document.getElementById('setupBox').style.display='block';return;}
   var btn=document.getElementById('shareBtn');
-  btn.disabled=true;btn.textContent='⏳ Se comprimă...';
+  btn.disabled=true;btn.textContent='⏳ Se salvează...';
+  // Salvare via form POST invizibil (singura metoda garantata cu GAS)
+  var id = Math.random().toString(36).substr(2,8);
+  
+  // Cream un iframe invizibil ca target
+  var iframeName = 'gas_frame_' + id;
+  var iframe = document.createElement('iframe');
+  iframe.name = iframeName;
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
 
-  try{
-    var json=JSON.stringify(DATA);
-    var compressed=LZString.compressToEncodedURIComponent(json);
-    var link=BASE_URL+'?d='+compressed;
+  // Cream form care submite la GAS
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = SCRIPT_URL;
+  form.target = iframeName;
+  form.style.display = 'none';
 
-    var sizeInfo=document.getElementById('linkSize');
-    if(link.length>2000){
-      sizeInfo.className='link-size warn';
-      sizeInfo.textContent='⚠️ Link lung ('+link.length+' caractere) — WhatsApp poate trunchia. Încearcă cu mai puțin de 50 tickete.';
-    } else {
-      sizeInfo.className='link-size ok';
-      sizeInfo.textContent='✅ Link scurt ('+link.length+' caractere) — perfect pentru WhatsApp!';
-    }
+  var inputId = document.createElement('input');
+  inputId.name = 'id'; inputId.value = id;
+  form.appendChild(inputId);
 
-    document.getElementById('linkInput').value=link;
-    document.getElementById('linkModal').className='modal-bg on';
+  var inputData = document.createElement('input');
+  inputData.name = 'data'; inputData.value = JSON.stringify(DATA);
+  form.appendChild(inputData);
+
+  document.body.appendChild(form);
+
+  // Afisam linkul imediat (GAS salveaza in background)
+  setTimeout(function() {
+    var link = BASE_URL + '?id=' + id;
+    document.getElementById('linkInput').value = link;
+    document.getElementById('linkModal').className = 'modal-bg on';
     showStatus('✓ Link generat!','ok');
-  }catch(e){
-    showStatus('❌ Eroare: '+e.message,'err');
-  }
+    btn.disabled=false; btn.textContent='💬 WhatsApp Link';
+    // Cleanup
+    document.body.removeChild(form);
+    setTimeout(function(){ document.body.removeChild(iframe); }, 5000);
+  }, 500);
 
-  btn.disabled=false;btn.textContent='💬 WhatsApp Link';
+  form.submit();
 }
 
 function copyLink(){cp(document.getElementById('linkInput').value,document.getElementById('linkInput'));showStatus('✓ Link copiat!','ok');}
@@ -282,6 +347,55 @@ function downloadCSV(){
   var csv=[h.join(',')].concat(DATA.map(function(r){return [r.t,r.a,r.b,r.l,r.ty,r.d,r.dp].map(function(v){return '"'+v+'"';}).join(',');})).join('\n');
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='tickete.csv';a.click();
 }
+
+function openMap(){
+  if(!DATA.length){ showStatus('❌ Niciun date','err'); return; }
+
+  var src = (typeof filteredData !== 'undefined' && filteredData.length) ? filteredData : DATA;
+  document.getElementById('map-count').textContent = src.length + ' tickete';
+
+  // Lista tickete cu link Google Maps pentru fiecare
+  var listHtml = src.map(function(r, i){
+    var addr = s(r.ad) + ', ' + s(r.l);
+    var gmUrl = 'https://www.google.com/maps/search/' + encodeURIComponent(addr + ', Romania');
+    var wazeUrl = 'https://waze.com/ul?q=' + encodeURIComponent(addr + ', Romania');
+    var color = ['#e74c3c','#e67e22','#f1c40f','#2ecc71','#3498db','#9b59b6'][i % 6];
+    return '<div style="display:flex;align-items:center;gap:10px;padding:10px 16px;border-bottom:1px solid var(--br);font-size:12px">' +
+      '<span style="background:'+color+';color:#fff;border-radius:50%;width:22px;height:22px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:10px;font-weight:700">'+(i+1)+'</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:600;color:var(--tx);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + s(r.t) + ' — ' + s(r.b) + '</div>' +
+        '<div style="color:var(--t2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">' + addr + ' <span style="background:rgba(74,144,226,.1);color:var(--pr);border-radius:3px;padding:1px 5px;font-size:10px">' + s(r.ty) + '</span></div>' +
+      '</div>' +
+      '<div style="display:flex;gap:4px;flex-shrink:0">' +
+        '<a href="' + gmUrl + '" target="_blank" style="background:#4285f4;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none;white-space:nowrap">📍 Maps</a>' +
+        '<a href="' + wazeUrl + '" target="_blank" style="background:#33ccff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none;white-space:nowrap">🚗 Waze</a>' +
+      '</div>' +
+    '</div>';
+  }).join('');
+
+  document.getElementById('map-list').innerHTML = listHtml;
+
+  // OpenStreetMap embed - gratuit, fara API key
+  // Centrat pe prima localitate din lista
+  var firstLoc = s(src[0].l) + ', Romania';
+  var osmSrc = 'https://www.openstreetmap.org/export/embed.html?bbox=20.0,44.0,23.0,46.5&layer=mapnik&marker=45.3,21.9';
+
+  // Folosim frame cu OpenStreetMap
+  var frameHtml = '<iframe src="https://www.openstreetmap.org/export/embed.html?bbox=20.5,44.2,23.5,46.3&layer=mapnik" style="width:100%;height:100%;border:none" loading="lazy"></iframe>';
+  document.getElementById('map-frame-container').innerHTML = frameHtml;
+  document.getElementById('map-hint').style.display = 'block';
+  document.getElementById('mapModal').className = 'modal-bg on';
+}
+
+function closeMap(){
+  document.getElementById('mapModal').className = 'modal-bg';
+  document.getElementById('map-frame-container').innerHTML =
+    '<div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2)"><div style="font-size:32px;margin-bottom:8px">🗺️</div><div>Se încarcă harta...</div></div>' +
+    '<iframe id="map-frame" style="width:100%;height:100%;border:none;display:none"></iframe>';
+  document.getElementById('map-hint').style.display = 'none';
+}
+
+document.getElementById('mapModal').onclick = function(e){ if(e.target===this) closeMap(); };
 
 function resetData(){
   if(!confirm('Ștergi datele?'))return;
