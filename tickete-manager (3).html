@@ -115,6 +115,7 @@ tr:hover td{background:rgba(74,144,226,.04)}
     <div class="fbar" id="fbar"><span id="fbar-text"></span><button onclick="clearFilters()">✕ Elimină filtru</button></div>
     <div class="controls">
       <button class="primary" id="shareBtn" onclick="shareLink()">💬 WhatsApp Link</button>
+      <button class="primary" onclick="openMap()">🗺️ Hartă</button>
       <button onclick="downloadCSV()">📥 CSV</button>
       <button onclick="document.getElementById('setupBox').style.display=\'block\'">⚙️ Config</button>
       <button onclick="resetData()">🔄 Reset</button>
@@ -123,6 +124,31 @@ tr:hover td{background:rgba(74,144,226,.04)}
       <thead><tr><th>Ticket</th><th>Account</th><th>Beneficiara</th><th>Localitate</th><th>Tip</th><th>Data initiere</th><th>Data programata</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table></div>
+  </div>
+</div>
+
+<!-- Leaflet CSS -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+<script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
+
+<!-- Map Modal -->
+<div class="modal-bg" id="mapModal" style="z-index:300">
+  <div style="background:var(--su);border-radius:12px;width:100%;max-width:960px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--br);flex-shrink:0">
+      <h2 style="font-size:16px;color:var(--pr)">🗺️ Hartă Tickete</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="map-count" style="font-size:12px;color:var(--t2)"></span>
+        <button onclick="closeMap()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t2);padding:2px 6px">✕</button>
+      </div>
+    </div>
+    <div id="map-container" style="flex:1;min-height:440px;position:relative">
+      <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2);z-index:10">
+        <div style="font-size:40px;margin-bottom:8px">🗺️</div>
+        <div id="map-loading-text">Se încarcă harta...</div>
+      </div>
+      <div id="leaflet-map" style="width:100%;height:100%;min-height:440px"></div>
+    </div>
+    <div id="map-list" style="max-height:180px;overflow-y:auto;border-top:1px solid var(--br);flex-shrink:0"></div>
   </div>
 </div>
 
@@ -148,8 +174,8 @@ tr:hover td{background:rgba(74,144,226,.04)}
 
 <script>
 var DATA=[], activeType=null, activeLoc=null;
-var SCRIPT_URL = localStorage.getItem('gas_url') || 'https://script.google.com/macros/s/AKfycby5esV7DQDrbHBi-SAof-0sI9M9r6X4Sw3HyAg90TSC3_Y_SGJCjbtyfaMNvy2oZAY3/exec';
-var BASE_URL = 'https://gabrielnita-netizen.github.io/tickete/raport.html';
+var SCRIPT_URL = localStorage.getItem('gas_url') || 'https://script.google.com/macros/s/AKfycbxG6PtyTahCGXBZpnKzhn45Man-magAfg85CfgGu-mWSTBqoXUhfqL13LT5-ppBZWqU/exec';
+var BASE_URL = 'https://gabrielnita-netizen.github.io/tickete/rv.html';
 
 // Init
 if(SCRIPT_URL) document.getElementById('setupBox').style.display='none';
@@ -269,24 +295,46 @@ function shareLink(){
   if(!SCRIPT_URL){showStatus('❌ Configurează mai întâi Google Apps Script','err');document.getElementById('setupBox').style.display='block';return;}
   var btn=document.getElementById('shareBtn');
   btn.disabled=true;btn.textContent='⏳ Se salvează...';
-  var xhr=new XMLHttpRequest();
-  xhr.open('POST',SCRIPT_URL,true);
-  xhr.setRequestHeader('Content-Type','text/plain');
-  xhr.onreadystatechange=function(){
-    if(xhr.readyState!==4)return;
-    if(xhr.status===200){
-      try{
-        var res=JSON.parse(xhr.responseText);
-        var link=BASE_URL+'?id='+res.id;
-        document.getElementById('linkInput').value=link;
-        document.getElementById('linkModal').className='modal-bg on';
-        showStatus('✓ Link generat!','ok');
-      }catch(e){showStatus('❌ Eroare: '+e.message,'err');}
-    }else{showStatus('❌ Eroare server ('+xhr.status+'). Verifică URL-ul din config.','err');}
-    btn.disabled=false;btn.textContent='💬 WhatsApp Link';
-  };
-  xhr.onerror=function(){showStatus('❌ Eroare conexiune','err');btn.disabled=false;btn.textContent='💬 WhatsApp Link';};
-  xhr.send(JSON.stringify(DATA));
+  // Salvare via form POST invizibil (singura metoda garantata cu GAS)
+  var id = Math.random().toString(36).substr(2,8);
+  
+  // Cream un iframe invizibil ca target
+  var iframeName = 'gas_frame_' + id;
+  var iframe = document.createElement('iframe');
+  iframe.name = iframeName;
+  iframe.style.display = 'none';
+  document.body.appendChild(iframe);
+
+  // Cream form care submite la GAS
+  var form = document.createElement('form');
+  form.method = 'POST';
+  form.action = SCRIPT_URL;
+  form.target = iframeName;
+  form.style.display = 'none';
+
+  var inputId = document.createElement('input');
+  inputId.name = 'id'; inputId.value = id;
+  form.appendChild(inputId);
+
+  var inputData = document.createElement('input');
+  inputData.name = 'data'; inputData.value = JSON.stringify(DATA);
+  form.appendChild(inputData);
+
+  document.body.appendChild(form);
+
+  // Afisam linkul imediat (GAS salveaza in background)
+  setTimeout(function() {
+    var link = BASE_URL + '?id=' + id;
+    document.getElementById('linkInput').value = link;
+    document.getElementById('linkModal').className = 'modal-bg on';
+    showStatus('✓ Link generat!','ok');
+    btn.disabled=false; btn.textContent='💬 WhatsApp Link';
+    // Cleanup
+    document.body.removeChild(form);
+    setTimeout(function(){ document.body.removeChild(iframe); }, 5000);
+  }, 500);
+
+  form.submit();
 }
 
 function copyLink(){cp(document.getElementById('linkInput').value,document.getElementById('linkInput'));showStatus('✓ Link copiat!','ok');}
@@ -300,6 +348,150 @@ function downloadCSV(){
   var csv=[h.join(',')].concat(DATA.map(function(r){return [r.t,r.a,r.b,r.l,r.ty,r.d,r.dp].map(function(v){return '"'+v+'"';}).join(',');})).join('\n');
   var a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv'}));a.download='tickete.csv';a.click();
 }
+
+var leafletMap = null;
+var mapMarkers = [];
+var geocodeCache = {};
+
+var COLORS = ['#e74c3c','#e67e22','#f39c12','#2ecc71','#3498db','#9b59b6','#1abc9c','#e91e63'];
+
+function openMap(){
+  if(!DATA.length){ showStatus('❌ Niciun date','err'); return; }
+  var src = (typeof filteredData !== 'undefined' && filteredData.length) ? filteredData : DATA;
+  document.getElementById('map-count').textContent = src.length + ' tickete';
+  document.getElementById('mapModal').className = 'modal-bg on';
+  document.getElementById('map-loading').style.display = 'block';
+  document.getElementById('map-loading-text').textContent = 'Se geocodifică adresele (0/' + src.length + ')...';
+
+  setTimeout(function(){
+    initLeafletMap();
+    geocodeAll(src);
+  }, 100);
+}
+
+function initLeafletMap(){
+  if(leafletMap) {
+    leafletMap.remove();
+    leafletMap = null;
+  }
+  mapMarkers = [];
+  leafletMap = L.map('leaflet-map', {zoomControl:true}).setView([45.3, 21.9], 9);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    attribution: '© OpenStreetMap contributors',
+    maxZoom: 19
+  }).addTo(leafletMap);
+}
+
+function geocodeAll(src){
+  var completed = 0;
+  var bounds = [];
+  var listHtml = '';
+
+  function geocodeOne(i){
+    if(i >= src.length){
+      // Toate geocodate
+      document.getElementById('map-loading').style.display = 'none';
+      document.getElementById('map-list').innerHTML = listHtml;
+      if(bounds.length > 0){
+        leafletMap.fitBounds(bounds, {padding:[30,30]});
+      }
+      // Attach list click events
+      document.querySelectorAll('.map-list-item').forEach(function(el){
+        el.addEventListener('click', function(){
+          var idx = parseInt(el.getAttribute('data-idx'));
+          if(mapMarkers[idx]){
+            leafletMap.setView(mapMarkers[idx].getLatLng(), 16);
+            mapMarkers[idx].openPopup();
+          }
+        });
+      });
+      return;
+    }
+
+    var r = src[i];
+    var addr = s(r.ad) + ', ' + s(r.l) + ', Romania';
+    var color = COLORS[i % COLORS.length];
+    var gmUrl = 'https://www.google.com/maps/search/' + encodeURIComponent(addr);
+    var wazeUrl = 'https://waze.com/ul?q=' + encodeURIComponent(addr);
+
+    // List item
+    listHtml += '<div class="map-list-item" data-idx="'+i+'" style="display:flex;align-items:center;gap:10px;padding:9px 16px;border-bottom:1px solid var(--br);font-size:12px;cursor:pointer">' +
+      '<span style="background:'+color+';color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">'+(i+1)+'</span>' +
+      '<div style="flex:1;min-width:0">' +
+        '<div style="font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s(r.t)+' — '+s(r.b)+'</div>' +
+        '<div style="color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s(r.ad)+', '+s(r.l)+'</div>' +
+      '</div>' +
+      '<div style="display:flex;gap:4px;flex-shrink:0">' +
+        '<a href="'+gmUrl+'" target="_blank" onclick="event.stopPropagation()" style="background:#4285f4;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">📍 Maps</a>' +
+        '<a href="'+wazeUrl+'" target="_blank" onclick="event.stopPropagation()" style="background:#33ccff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">🚗 Waze</a>' +
+      '</div>' +
+    '</div>';
+
+    // Geocodare cu Nominatim
+    if(geocodeCache[addr]){
+      addMarker(i, r, geocodeCache[addr], color, bounds);
+      completed++;
+      document.getElementById('map-loading-text').textContent = 'Se geocodifică... (' + completed + '/' + src.length + ')';
+      setTimeout(function(){ geocodeOne(i+1); }, 0);
+    } else {
+      var url = 'https://nominatim.openstreetmap.org/search?format=json&q=' + encodeURIComponent(addr) + '&limit=1&countrycodes=ro';
+      fetch(url, {headers:{'User-Agent':'TicketeManager/1.0'}})
+        .then(function(r){ return r.json(); })
+        .then(function(data){
+          completed++;
+          document.getElementById('map-loading-text').textContent = 'Se geocodifică... (' + completed + '/' + src.length + ')';
+          if(data && data.length > 0){
+            var coords = {lat: parseFloat(data[0].lat), lng: parseFloat(data[0].lon)};
+            geocodeCache[addr] = coords;
+            addMarker(i, src[i], coords, color, bounds);
+          }
+          setTimeout(function(){ geocodeOne(i+1); }, 300); // 300ms delay pt Nominatim rate limit
+        })
+        .catch(function(){
+          completed++;
+          setTimeout(function(){ geocodeOne(i+1); }, 300);
+        });
+    }
+  }
+
+  geocodeOne(0);
+}
+
+function addMarker(i, r, coords, color, bounds){
+  bounds.push([coords.lat, coords.lng]);
+  var svgIcon = L.divIcon({
+    className: '',
+    html: '<div style="background:'+color+';color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+(i+1)+'</div>',
+    iconSize: [28,28],
+    iconAnchor: [14,14],
+    popupAnchor: [0,-14]
+  });
+  var popup = '<div style="font-size:12px;min-width:200px">' +
+    '<div style="font-weight:700;color:#333;margin-bottom:4px">'+s(r.t)+'</div>' +
+    '<div style="margin-bottom:2px"><b>'+s(r.b)+'</b></div>' +
+    '<div style="color:#666;margin-bottom:4px">'+s(r.ad)+', '+s(r.l)+'</div>' +
+    '<div style="margin-bottom:6px"><span style="background:#e8f0fe;color:#4285f4;border-radius:3px;padding:2px 6px">'+s(r.ty)+'</span></div>' +
+    '<div style="display:flex;gap:6px">' +
+      '<a href="https://www.google.com/maps/search/'+encodeURIComponent(s(r.ad)+', '+s(r.l)+', Romania')+'" target="_blank" style="background:#4285f4;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">📍 Maps</a>' +
+      '<a href="https://waze.com/ul?q='+encodeURIComponent(s(r.ad)+', '+s(r.l)+', Romania')+'" target="_blank" style="background:#33ccff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">🚗 Waze</a>' +
+    '</div>' +
+  '</div>';
+  var marker = L.marker([coords.lat, coords.lng], {icon: svgIcon}).addTo(leafletMap).bindPopup(popup);
+  mapMarkers[i] = marker;
+}
+
+function closeMap(){
+  document.getElementById('mapModal').className = 'modal-bg';
+  if(leafletMap){ leafletMap.remove(); leafletMap=null; }
+  mapMarkers = [];
+  document.getElementById('map-loading').style.display = 'block';
+  document.getElementById('map-loading-text').textContent = 'Se încarcă harta...';
+  document.getElementById('map-list').innerHTML = '';
+  // Reinitialize empty div
+  document.getElementById('leaflet-map').innerHTML = '';
+}
+
+document.getElementById('mapModal').onclick = function(e){ if(e.target===this) closeMap(); };
 
 function resetData(){
   if(!confirm('Ștergi datele?'))return;
