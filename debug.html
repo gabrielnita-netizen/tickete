@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0"><title>Debug</title></head>
+<body style="font-family:sans-serif;padding:20px;font-size:14px">
+<h2>Test Debug</h2>
+<div id="log" style="background:#f0f0f0;padding:10px;border-radius:6px;min-height:200px;font-family:monospace;font-size:12px;white-space:pre-wrap;word-break:break-all"></div>
+
+<script>
+var log = document.getElementById('log');
+function L(msg){ log.textContent += msg + '\n\n'; }
+
+L('1. Start test');
+L('User agent: ' + navigator.userAgent);
+
+var GAS = 'https://script.google.com/macros/s/AKfycbxG6PtyTahCGXBZpnKzhn45Man-magAfg85CfgGu-mWSTBqoXUhfqL13LT5-ppBZWqU/exec?id=0swwbdt2&callback=test';
+
+// Test 1: fetch direct
+L('2. Test fetch direct...');
+fetch(GAS)
+  .then(function(r){ L('FETCH OK status=' + r.status); return r.text(); })
+  .then(function(t){ L('FETCH TEXT (first 200 chars): ' + t.substring(0, 200)); })
+  .catch(function(e){ L('FETCH ERROR: ' + e.message); });
+
+// Test 2: JSONP script tag
+setTimeout(function(){
+  L('3. Test JSONP script tag...');
+  window.test = function(data){ L('JSONP OK! Received ' + (Array.isArray(data) ? data.length + ' items' : 'object')); };
+  var sc = document.createElement('script');
+  sc.src = GAS;
+  sc.onload = function(){ L('Script tag ONLOAD'); };
+  sc.onerror = function(){ L('Script tag ONERROR'); };
+  document.body.appendChild(sc);
+}, 3000);
+
+// Test 3: fetch cu no-cors
+setTimeout(function(){
+  L('4. Test fetch no-cors...');
+  fetch(GAS, {mode:'no-cors'})
+    .then(function(r){ L('FETCH no-cors OK status=' + r.status + ' type=' + r.type); })
+    .catch(function(e){ L('FETCH no-cors ERROR: ' + e.message); });
+}, 6000);
+
+// Test 4: XMLHttpRequest
+setTimeout(function(){
+  L('5. Test XMLHttpRequest...');
+  var xhr = new XMLHttpRequest();
+  xhr.onreadystatechange = function(){
+    if(xhr.readyState === 4){
+      L('XHR status=' + xhr.status + ' response len=' + (xhr.responseText || '').length);
+      if(xhr.responseText) L('XHR text first 200: ' + xhr.responseText.substring(0, 200));
+    }
+  };
+  xhr.onerror = function(){ L('XHR ERROR'); };
+  xhr.open('GET', GAS, true);
+  xhr.send();
+}, 9000);
+</script>
+</body>
+</html>
