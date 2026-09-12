@@ -1,0 +1,616 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raport Tickete</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --pr:#0052CC; --pr-dk:#003D99; --pr-lt:#E6EFFF;
+  --bg:#FFFFFF; --su:#FFFFFF; --tx:#000000; --t2:#4A5568;
+  --br:#000000; --br-lt:#D1D9E0;
+  --orange:#FF6B00; --orange-dk:#E55A00;
+  --green:#00A651; --green-dk:#008040;
+  --red:#E51A1A; --yellow:#FFB800;
+}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--tx);padding:12px;font-size:16px;line-height:1.4;-webkit-font-smoothing:antialiased}
+.wrap{max-width:1200px;margin:0 auto}
+h1{text-align:center;font-size:28px;font-weight:900;color:var(--pr);margin-bottom:18px;letter-spacing:-.5px}
+
+/* Statistici — bold, culori tari */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
+.sc{background:var(--pr);color:#fff;padding:14px 10px;border-radius:12px;text-align:center;border:3px solid var(--pr-dk)}
+.sv{font-size:30px;font-weight:900;line-height:1;color:#fff}
+.sl{font-size:11px;color:#fff;margin-top:6px;text-transform:uppercase;font-weight:700;letter-spacing:.5px;opacity:.95}
+
+/* Secțiuni */
+.sec{margin-bottom:18px}
+.sec-title{font-size:13px;color:var(--tx);text-transform:uppercase;letter-spacing:.8px;margin-bottom:10px;font-weight:800}
+
+/* Carduri filtre — mari, groase */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(105px,1fr));gap:8px}
+.card{background:#fff;padding:12px 8px;border-radius:10px;border:3px solid var(--tx);text-align:center;cursor:pointer;transition:transform .1s;user-select:none;min-height:60px;display:flex;flex-direction:column;justify-content:center}
+.card:active{transform:scale(.96)}
+.card.on{background:var(--pr);color:#fff;border-color:var(--pr-dk)}
+.card.on .cv,.card.on .cl{color:#fff}
+.cv{font-size:24px;font-weight:900;color:var(--tx);line-height:1}
+.cl{font-size:12px;color:var(--tx);margin-top:4px;font-weight:700;text-transform:uppercase}
+
+/* Bara de filtre */
+.fbar{display:none;background:var(--yellow);border:3px solid var(--tx);border-radius:10px;padding:12px 14px;margin-bottom:14px;font-size:15px;align-items:center;justify-content:space-between;gap:8px;font-weight:700}
+.fbar.on{display:flex}
+.fbar span{color:var(--tx);font-weight:800}
+.fbar button{background:var(--tx);border:none;border-radius:6px;padding:8px 14px;color:#fff;cursor:pointer;font-size:13px;font-weight:700}
+
+/* Buton harta — mare, contrast maxim */
+.map-btn{background:var(--pr);color:#fff;border:3px solid var(--pr-dk);border-radius:12px;padding:16px 20px;font-size:17px;font-weight:800;cursor:pointer;width:100%;letter-spacing:.3px;transition:transform .1s}
+.map-btn:active{transform:scale(.98)}
+
+/* Tabel — cu status color pe margine */
+.tw{background:#fff;border-radius:12px;border:3px solid var(--tx);overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}
+thead{background:var(--tx);position:sticky;top:0;z-index:5}
+th{padding:12px 10px;text-align:left;font-weight:800;color:#fff;border:none;white-space:nowrap;text-transform:uppercase;font-size:12px;letter-spacing:.5px}
+td{padding:14px 10px;border-bottom:2px solid var(--br-lt);font-weight:500}
+tr:last-child td{border-bottom:none}
+tr:active td{background:var(--pr-lt)}
+
+/* Ticket link — bold și mare */
+.tlink{display:block;color:var(--pr);cursor:pointer;font-weight:900;text-decoration:underline;font-size:16px}
+
+/* BUTONUL REZOLVAT — mare, portocaliu strident */
+.rezolvat-btn{display:flex;align-items:center;justify-content:center;gap:6px;width:100%;background:var(--orange);color:#fff;border:3px solid var(--orange-dk);border-radius:10px;padding:14px 12px;font-size:15px;font-weight:900;cursor:pointer;transition:transform .1s;text-align:center;min-width:120px;min-height:52px;letter-spacing:.3px;text-transform:uppercase}
+.rezolvat-btn:active{transform:scale(.95)}
+.rezolvat-btn.done{background:var(--green);border-color:var(--green-dk)}
+.rez-check{width:20px;height:20px;border:3px solid #fff;border-radius:4px;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:transparent}
+.rezolvat-btn.done .rez-check{background:#fff;border-color:#fff}
+.rez-check-mark{display:none;color:var(--green);font-size:14px;font-weight:900;line-height:1}
+.rezolvat-btn.done .rez-check-mark{display:block}
+
+/* Rând rezolvat — evidențiat verde */
+tr.rezolvat td{background:#E8F5E9!important;border-left:6px solid var(--green)}
+tr.rezolvat td:first-child{border-left:6px solid var(--green)}
+
+/* Celule copiabile */
+.cp{cursor:pointer;font-weight:500}
+.cp:active{background:var(--pr-lt)!important}
+.copied{background:var(--green)!important;color:#fff!important;font-weight:700!important}
+
+/* Stări speciale */
+.empty{text-align:center;padding:30px;color:var(--t2);font-style:italic;font-size:15px}
+.msg{text-align:center;padding:60px 20px;color:var(--tx);font-size:18px;font-weight:600}
+.spinner{display:inline-block;width:24px;height:24px;border:4px solid var(--br-lt);border-top-color:var(--pr);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Modal — contrast puternic */
+.modal-bg{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:300;justify-content:center;align-items:center;padding:12px}
+.modal-bg.on{display:flex}
+#ov{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.75);z-index:100;justify-content:center;align-items:center;padding:12px}
+#ov.on{display:flex}
+#pan{background:#fff;border-radius:14px;width:100%;max-width:540px;max-height:90vh;overflow-y:auto;border:3px solid var(--tx)}
+.ph{display:flex;justify-content:space-between;align-items:center;padding:16px 20px;border-bottom:3px solid var(--tx);position:sticky;top:0;background:var(--pr);color:#fff}
+.ph h2{font-size:18px;color:#fff;font-weight:900}
+.xb{background:#fff;border:2px solid #fff;font-size:20px;cursor:pointer;color:var(--pr);padding:2px 10px;border-radius:6px;font-weight:900;line-height:1}
+.pb{padding:16px 20px}
+
+/* Detalii ticket — rând cu label mare */
+.fr{display:flex;gap:12px;padding:12px 0;border-bottom:2px solid var(--br-lt);align-items:flex-start}
+.fr:last-child{border-bottom:none}
+.fl{font-size:12px;color:var(--pr);text-transform:uppercase;min-width:130px;flex-shrink:0;padding-top:2px;font-weight:800;letter-spacing:.4px}
+.fv{font-size:16px;line-height:1.5;word-break:break-word;cursor:pointer;flex:1;color:var(--tx);font-weight:600}
+.fv:active{color:var(--pr)}
+.fv.em{color:var(--t2);font-style:italic;cursor:default}
+.badge{display:inline-block;padding:4px 12px;border-radius:6px;background:var(--pr);color:#fff;font-weight:800;font-size:14px;text-transform:uppercase;letter-spacing:.3px}
+
+button{padding:12px 18px;border:2px solid var(--tx);border-radius:8px;background:#fff;color:var(--tx);cursor:pointer;font-size:15px;font-weight:700}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>🎫 Raport Tickete</h1>
+  <div id="root"><div class="msg"><span class="spinner"></span>Se încarcă datele...</div></div>
+</div>
+
+<div id="ov">
+  <div id="pan">
+    <div class="ph"><h2 id="ptitle">Detalii</h2><button class="xb" id="xbtn">✕</button></div>
+    <div class="pb" id="pbody"></div>
+  </div>
+</div>
+
+<!-- WA Panel - apare dupa rezolvare -->
+<div id="wa-panel" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#25D366;color:#fff;border-radius:12px;padding:14px 20px;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:300;display:none;align-items:center;gap:12px;max-width:380px;width:90%">
+  <span id="wa-text" style="font-size:13px;font-weight:500;flex:1"></span>
+  <button id="wa-send-btn" style="background:#fff;color:#25D366;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap">💬 Send WA</button>
+  <button id="wa-close-btn" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
+</div>
+
+<!-- Map Modal -->
+<div class="modal-bg" id="mapModal" style="z-index:300">
+  <div style="background:var(--su);border-radius:12px;width:100%;max-width:960px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--br);flex-shrink:0">
+      <h2 style="font-size:16px;color:var(--pr)">🗺️ Hartă Tickete</h2>
+      <div style="display:flex;gap:8px;align-items:center">
+        <span id="map-count" style="font-size:12px;color:var(--t2)"></span>
+        <button onclick="closeMap()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t2);padding:2px 6px">✕</button>
+      </div>
+    </div>
+    <div id="map-container" style="flex:1;min-height:400px;position:relative">
+      <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2);z-index:10">
+        <div style="font-size:40px;margin-bottom:8px">🗺️</div>
+        <div id="map-loading-text">Se încarcă harta...</div>
+      </div>
+      <div id="leaflet-map" style="width:100%;height:100%;min-height:400px"></div>
+    </div>
+    <div id="map-list" style="max-height:180px;overflow-y:auto;border-top:1px solid var(--br);flex-shrink:0"></div>
+  </div>
+</div>
+
+<script>
+var DATA = [];
+var activeType = null;
+var activeLoc = null;
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxG6PtyTahCGXBZpnKzhn45Man-magAfg85CfgGu-mWSTBqoXUhfqL13LT5-ppBZWqU/exec';
+var FIREBASE_URL = 'https://tickete-jud-default-rtdb.europe-west1.firebasedatabase.app';
+var SHEET_ID = '1feTSTO4FCFTUJBxiD0rd2ICF30jZE9pX6oihHxznkAY';
+
+function s(v){ return (v||'').toString(); }
+
+// Converteste data (numar serial Excel sau string) in format dd.mm.yyyy hh:mm
+// Daca e gol/invalid, intoarce "NA"
+function fmtDate(v){
+  if(v===null || v===undefined || v==='' || v==='NA') return 'NA';
+  var d;
+  if(typeof v === 'number' || (/^\d+(\.\d+)?$/).test(String(v))){
+    // Serial Excel: (serial - 25569) * 86400000 = timestamp ms
+    var num = parseFloat(v);
+    if(num < 1 || num > 100000) return 'NA';
+    d = new Date(Math.round((num - 25569) * 86400 * 1000));
+  } else {
+    d = new Date(v);
+  }
+  if(!d || isNaN(d.getTime())) return 'NA';
+  var pad = function(n){ return n<10?'0'+n:''+n; };
+  var dd = pad(d.getDate()), mm = pad(d.getMonth()+1), yy = d.getFullYear();
+  var hh = pad(d.getHours()), mn = pad(d.getMinutes());
+  var hasTime = hh!=='00' || mn!=='00';
+  return dd+'.'+mm+'.'+yy + (hasTime ? ' '+hh+':'+mn : '');
+}
+
+function cp(txt, el){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ flash(el); }).catch(function(){ fb(txt); flash(el); });
+  } else { fb(txt); flash(el); }
+}
+function fb(txt){ var t=document.createElement('textarea'); t.value=txt; t.style.cssText='position:fixed;opacity:0'; document.body.appendChild(t); t.focus(); t.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(t); }
+function flash(el){ el.classList.add('copied'); setTimeout(function(){ el.classList.remove('copied'); }, 700); }
+
+// Panel detalii
+var xbtnEl = document.getElementById('xbtn');
+if(xbtnEl) xbtnEl.onclick = function(){ document.getElementById('ov').className = ''; };
+var ovEl = document.getElementById('ov');
+if(ovEl) ovEl.onclick = function(e){ if(e.target===this) this.className=''; };
+
+function openPanel(i){
+  var r = DATA[i]; if(!r) return;
+  document.getElementById('ptitle').textContent = 'Ticket #' + s(r.t);
+  var fields = [['Numar ticket',r.t,false],['Account',r.a,false],['Beneficiara',r.b,false],['Obiectiv',r.ob,false],['Localitate',r.l,false],['Adresa',r.ad,false],['Judet',r.j,false],['Tip ticket',r.ty,true],['Data initiere',fmtDate(r.d),false],['Data programata',fmtDate(r.dp),false],['Nota',r.n,false]];
+  var html = '';
+  for(var k=0;k<fields.length;k++){
+    var lbl=fields[k][0], val=s(fields[k][1]), badge=fields[k][2], vh;
+    if(!val){
+      vh = (lbl==='Data initiere' || lbl==='Data programata')
+        ? '<span class="fv">NA</span>'
+        : '<span class="fv em">—</span>';
+    }
+    else if(badge){ vh='<span class="fv"><span class="badge">'+val+'</span></span>'; }
+    else{ vh='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+val.replace(/\n/g,'<br>')+'</span>'; }
+    html += '<div class="fr"><span class="fl">'+lbl+'</span>'+vh+'</div>';
+  }
+  document.getElementById('pbody').innerHTML = html;
+  document.querySelectorAll('#pbody .fv[data-val]').forEach(function(el){ el.onclick=function(){ cp(el.getAttribute('data-val'),el); }; });
+  document.getElementById('ov').className = 'on';
+}
+
+// Panel rezolvat
+function openRezolvat(i){
+  var r = DATA[i]; if(!r) return;
+  var idx = i;
+  // Daca e deja rezolvat -> toggle inapoi la portocaliu (direct, fara confirm)
+  if(r._rezolvat){
+    DATA[idx]._rezolvat = false;
+    updateTable();
+    return;
+  }
+  // Marcheaza vizual imediat
+  markRezolvat(idx);
+  // Salveaza in Google Sheets
+  logToSheet(r, function(ok){
+    // Arata notificarea WhatsApp (indiferent de rezultat Sheets)
+    showWANotif(r);
+  });
+}
+
+function markRezolvat(idx){
+  DATA[idx]._rezolvat = true;
+  updateTable();
+}
+
+function buildWAMessage(r){
+  var ora = new Date().toLocaleString('ro-RO');
+  return '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
+}
+
+function showWANotif(r){
+  var panel = document.getElementById('wa-panel');
+  document.getElementById('wa-text').textContent = 'Ticket '+s(r.t)+' rezolvat!';
+  panel.style.display = 'flex';
+  var waMsg = buildWAMessage(r);
+  document.getElementById('wa-send-btn').onclick = function(){
+    var msg = encodeURIComponent(waMsg);
+    var phone = '40786590179';
+    // Incearca schema nativa cu numar (deschide direct chatul); fallback wa.me
+    var nativeUrl = 'whatsapp://send?phone='+phone+'&text='+msg;
+    var webUrl = 'https://wa.me/'+phone+'?text='+msg;
+    try {
+      window.location.href = nativeUrl;
+      setTimeout(function(){ window.open(webUrl, '_blank'); }, 800);
+    } catch(e){
+      window.open(webUrl, '_blank');
+    }
+    panel.style.display = 'none';
+  };
+  document.getElementById('wa-close-btn').onclick = function(){ panel.style.display='none'; };
+  setTimeout(function(){ panel.style.display='none'; }, 30000);
+}
+
+function logToSheet(r, cb){
+  if(!SHEET_ID){ if(cb) cb(false); return; }
+  var ora = new Date().toLocaleString('ro-RO');
+  var row = [s(r.t),s(r.b),s(r.ad),s(r.l),s(r.ty),fmtDate(r.dp),ora];
+  var cbName = 'cbSheet'+Date.now();
+  var url = SCRIPT_URL+'?action=sheet&sid='+encodeURIComponent(SHEET_ID)+'&row='+encodeURIComponent(JSON.stringify(row))+'&callback='+cbName;
+  window[cbName] = function(data){
+    delete window[cbName];
+    if(cb) cb(data && data.ok);
+  };
+  var sc = document.createElement('script'); sc.src=url;
+  sc.onerror=function(){ delete window[cbName]; if(cb) cb(false); };
+  document.head.appendChild(sc);
+}
+
+function filtered(){ return DATA.filter(function(r){ return (!activeType||(r.ty||'?')===activeType)&&(!activeLoc||(r.l||'')===activeLoc); }); }
+function toggleType(type){ activeType=(activeType===type)?null:type; document.querySelectorAll('#typeGrid .card').forEach(function(el){ el.className='card'+(el.getAttribute('data-type')===activeType?' on':''); }); updateTable(); }
+function toggleLoc(loc){ activeLoc=(activeLoc===loc)?null:loc; document.querySelectorAll('#locGrid .card').forEach(function(el){ el.className='card'+(el.getAttribute('data-loc')===activeLoc?' on':''); }); updateTable(); }
+function clearFilters(){ activeType=null;activeLoc=null; document.querySelectorAll('.card').forEach(function(el){ el.className='card'; }); updateTable(); }
+
+function updateTable(){
+  var src=filtered();
+  var rows=src.map(function(r){
+    var i=DATA.indexOf(r);
+    var rowCls=r._rezolvat?' class="rezolvat"':'';
+    return '<tr'+rowCls+'>'+
+      '<td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span></td>'+
+      '<td>'+(r._rezolvat?'<button class="rezolvat-btn done" data-idx="'+i+'">✓ Rezolvat</button>':'<button class="rezolvat-btn" data-idx="'+i+'"><span class="rez-check"><span class="rez-check-mark">✓</span></span>Rezolvat</button>')+'</td>'+
+      '<td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td>'+
+      '<td class="cp">'+s(r.l)+'</td><td class="cp">'+s(r.ty)+'</td>'+
+      '<td class="cp">'+fmtDate(r.d)+'</td><td class="cp">'+fmtDate(r.dp)+'</td>'+
+    '</tr>';
+  }).join('');
+  document.querySelector('#root tbody').innerHTML = rows || '<tr><td colspan="8" class="empty">Nu există tickete pentru filtrul selectat</td></tr>';
+  document.querySelectorAll('.tlink').forEach(function(el){ el.onclick=function(){ openPanel(parseInt(el.getAttribute('data-idx'))); }; });
+  document.querySelectorAll('td.cp').forEach(function(el){ el.onclick=function(){ cp(el.textContent||el.innerText,el); }; });
+  document.querySelectorAll('.rezolvat-btn[data-idx]').forEach(function(btn){ btn.onclick=function(e){ e.stopPropagation(); openRezolvat(parseInt(btn.getAttribute('data-idx'))); }; });
+  var parts=[]; if(activeType) parts.push('Tip: '+activeType); if(activeLoc) parts.push('Localitate: '+activeLoc);
+  var fbar=document.getElementById('fbar'); fbar.className=parts.length?'fbar on':'fbar';
+  document.getElementById('fbar-text').textContent='🔍 '+parts.join(' | ')+' ('+src.length+' tickete)';
+}
+
+// Event delegation global: prinde click pe ORICE rezolvat-btn (portocaliu sau verde)
+document.addEventListener('click', function(e){
+  var btn = e.target.closest && e.target.closest('.rezolvat-btn[data-idx]');
+  if(btn){
+    e.stopPropagation();
+    e.preventDefault();
+    var idx = parseInt(btn.getAttribute('data-idx'));
+    if(!isNaN(idx)) openRezolvat(idx);
+  }
+});
+
+function render(data){
+  DATA=data;
+  if(!data||!data.length){ document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Nu există date</div>'; return; }
+  var acc={},loc={},cnt={};
+  data.forEach(function(r){ if(r.a)acc[r.a]=1; if(r.l)loc[r.l]=(loc[r.l]||0)+1; var t=r.ty||'?';cnt[t]=(cnt[t]||0)+1; });
+  var locs=Object.keys(loc).sort();
+  var locsHtml=locs.map(function(l){ return '<div class="card" data-loc="'+l+'"><div class="cv">'+loc[l]+'</div><div class="cl">'+l+'</div></div>'; }).join('');
+  var types=Object.keys(cnt).sort(function(a,b){ return cnt[b]-cnt[a]; });
+  var typesHtml=types.map(function(t){ return '<div class="card" data-type="'+t+'"><div class="cv">'+cnt[t]+'</div><div class="cl">'+t+'</div></div>'; }).join('');
+  var rows=data.map(function(r,i){ return '<tr><td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span></td><td><button class="rezolvat-btn" data-idx="'+i+'">✅ Rezolvat</button></td><td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td><td class="cp">'+s(r.l)+'</td><td class="cp">'+s(r.ty)+'</td><td class="cp">'+fmtDate(r.d)+'</td><td class="cp">'+fmtDate(r.dp)+'</td></tr>'; }).join('');
+  document.getElementById('root').innerHTML=
+    '<div class="grid3"><div class="sc"><div class="sv">'+data.length+'</div><div class="sl">Total Tickete</div></div><div class="sc"><div class="sv">'+Object.keys(acc).length+'</div><div class="sl">Conturi</div></div><div class="sc"><div class="sv">'+locs.length+'</div><div class="sl">Localități</div></div></div>'+
+    '<div style="margin-bottom:18px"><button onclick="openMap()" class="map-btn">🗺️ VEZI PE HARTĂ</button></div>'+
+    '<div class="sec"><div class="sec-title">🏙 Localități — apasă pentru filtrare</div><div class="cards" id="locGrid">'+locsHtml+'</div></div>'+
+    '<div class="sec"><div class="sec-title">🏷 Tipuri — apasă pentru filtrare</div><div class="cards" id="typeGrid">'+typesHtml+'</div></div>'+
+    '<div class="fbar" id="fbar"><span id="fbar-text"></span><button onclick="clearFilters()">✕ Elimină filtru</button></div>'+
+    '<div class="tw"><table><thead><tr><th>Ticket</th><th></th><th>Account</th><th>Beneficiara</th><th>Localitate</th><th>Tip</th><th>Data initiere</th><th>Data programata</th></tr></thead><tbody>'+rows+'</tbody></table></div>';
+  document.querySelectorAll('#locGrid .card').forEach(function(el){ el.onclick=function(){ toggleLoc(el.getAttribute('data-loc')); }; });
+  document.querySelectorAll('#typeGrid .card').forEach(function(el){ el.onclick=function(){ toggleType(el.getAttribute('data-type')); }; });
+  document.querySelectorAll('.tlink').forEach(function(el){ el.onclick=function(){ openPanel(parseInt(el.getAttribute('data-idx'))); }; });
+  document.querySelectorAll('td.cp').forEach(function(el){ el.onclick=function(){ cp(el.textContent||el.innerText,el); }; });
+  document.querySelectorAll('.rezolvat-btn[data-idx]').forEach(function(btn){ btn.onclick=function(e){ e.stopPropagation(); openRezolvat(parseInt(btn.getAttribute('data-idx'))); }; });
+}
+
+// ── MAP FUNCTIONS ─────────────────────────────────────────
+var leafletMap = null;
+var mapMarkers = [];
+var geocodeCache = {};
+var COLORS = ['#e74c3c','#e67e22','#f39c12','#2ecc71','#3498db','#9b59b6','#1abc9c','#e91e63'];
+
+function openMap(){
+  if(!DATA.length){ alert('Nu există date de afișat'); return; }
+  var src = filtered();
+  if(!src.length) src = DATA;
+  document.getElementById('map-count').textContent = src.length + ' tickete';
+  document.getElementById('mapModal').className = 'modal-bg on';
+  document.getElementById('map-loading').style.display = 'block';
+  document.getElementById('map-loading-text').textContent = 'Se încarcă harta...';
+
+  // Incarca Leaflet lazy daca nu e deja incarcat
+  if(typeof L === 'undefined'){
+    var lscript = document.createElement('script');
+    lscript.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js';
+    lscript.onload = function(){ drawMap(src); };
+    lscript.onerror = function(){ document.getElementById('map-loading-text').textContent = 'Eroare: nu s-a putut încărca harta.'; };
+    document.head.appendChild(lscript);
+  } else {
+    drawMap(src);
+  }
+}
+
+function drawMap(src){
+  setTimeout(function(){
+    try {
+      initLeafletMap();
+      geocodeAll(src);
+      setTimeout(function(){ if(leafletMap) leafletMap.invalidateSize(); }, 300);
+    } catch(e){
+      document.getElementById('map-loading-text').textContent = 'Eroare: ' + e.message;
+    }
+  }, 200);
+}
+
+function initLeafletMap(){
+  if(leafletMap){ leafletMap.remove(); leafletMap=null; }
+  mapMarkers = [];
+  document.getElementById('leaflet-map').innerHTML = '';
+  leafletMap = L.map('leaflet-map',{zoomControl:true}).setView([45.3,21.9],9);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap contributors', maxZoom:19
+  }).addTo(leafletMap);
+}
+
+var LOC_COORDS = {
+  'RESITA': [45.2969, 21.8897],
+  'CARANSEBES': [45.4192, 22.2208],
+  'BOCSA': [45.3736, 21.7411],
+  'ORAVITA': [45.0361, 21.6892],
+  'BAILE HERCULANE': [44.8797, 22.4142],
+  'MOLDOVA NOUA': [44.7364, 21.6669],
+  'OTELU ROSU': [45.5311, 22.3564],
+  'ANINA': [45.0783, 21.8556],
+  'TICVANIU MARE': [45.1500, 21.6167],
+  'BOZOVICI': [44.9333, 22.0006],
+  'RECAS': [45.8000, 21.5000],
+  'ARAD': [46.1866, 21.3123],
+  'TIMISOARA': [45.7489, 21.2087],
+  'LUGOJ': [45.6886, 21.9031]
+};
+
+function getLocalityCoords(loc){
+  var key = (loc||'').toUpperCase().trim();
+  return LOC_COORDS[key] || null;
+}
+
+function geocodeAll(src){
+  var bounds = [];
+  var listHtml = '';
+  var locOffsets = {};
+
+  for(var i=0; i<src.length; i++){
+    var r = src[i];
+    var color = COLORS[i % COLORS.length];
+    var addr = s(r.ad)+', '+s(r.l)+', Romania';
+    var gmUrl = 'https://www.google.com/maps/search/'+encodeURIComponent(addr);
+    var wazeUrl = 'https://waze.com/ul?q='+encodeURIComponent(addr);
+
+    listHtml += '<div class="map-list-item" data-idx="'+i+'" style="display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--br);font-size:12px;cursor:pointer">'+
+      '<span style="background:'+color+';color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">'+(i+1)+'</span>'+
+      '<div style="flex:1;min-width:0">'+
+        '<div style="font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s(r.t)+' — '+s(r.b)+'</div>'+
+        '<div style="color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s(r.ad)+', '+s(r.l)+'</div>'+
+      '</div>'+
+      '<div style="display:flex;gap:4px;flex-shrink:0;align-items:center">'+
+        '<a href="'+gmUrl+'" target="_blank" onclick="event.stopPropagation()" style="background:#4285f4;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">Maps</a>'+
+        '<a href="'+wazeUrl+'" target="_blank" onclick="event.stopPropagation()" style="background:#33ccff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">Waze</a>'+
+      '</div>'+
+    '</div>';
+
+    var baseCoords = getLocalityCoords(s(r.l));
+    if(baseCoords){
+      var locKey = s(r.l).toUpperCase();
+      if(!locOffsets[locKey]) locOffsets[locKey] = 0;
+      var offset = locOffsets[locKey];
+      locOffsets[locKey]++;
+      var angle = offset * 0.7;
+      var radius = 0.003 * offset;
+      var coords = {
+        lat: baseCoords[0] + radius * Math.cos(angle),
+        lng: baseCoords[1] + radius * Math.sin(angle)
+      };
+      addMarker(i, r, coords, color, bounds);
+    }
+  }
+
+  document.getElementById('map-loading').style.display='none';
+  document.getElementById('map-list').innerHTML = listHtml;
+  if(bounds.length>0) leafletMap.fitBounds(bounds,{padding:[40,40]});
+
+  document.querySelectorAll('.map-list-item').forEach(function(el){
+    el.addEventListener('click',function(){
+      var idx=parseInt(el.getAttribute('data-idx'));
+      if(mapMarkers[idx]){ leafletMap.setView(mapMarkers[idx].getLatLng(),15); mapMarkers[idx].openPopup(); }
+    });
+  });
+}
+
+function addMarker(i,r,coords,color,bounds){
+  bounds.push([coords.lat,coords.lng]);
+  var icon=L.divIcon({
+    className:'',
+    html:'<div style="background:'+color+';color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+(i+1)+'</div>',
+    iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-14]
+  });
+  var addr=s(r.ad)+', '+s(r.l)+', Romania';
+  var popup='<div style="font-size:12px;min-width:200px">'+
+    '<div style="font-weight:700;margin-bottom:4px">'+s(r.t)+'</div>'+
+    '<div style="margin-bottom:2px"><b>'+s(r.b)+'</b></div>'+
+    '<div style="color:#666;margin-bottom:4px">'+s(r.ad)+', '+s(r.l)+'</div>'+
+    '<div style="margin-bottom:6px"><span style="background:#e8f0fe;color:#4285f4;border-radius:3px;padding:2px 6px">'+s(r.ty)+'</span></div>'+
+    '<div style="display:flex;gap:6px">'+
+      '<a href="https://www.google.com/maps/search/'+encodeURIComponent(addr)+'" target="_blank" style="background:#4285f4;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">Maps</a>'+
+      '<a href="https://waze.com/ul?q='+encodeURIComponent(addr)+'" target="_blank" style="background:#33ccff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">Waze</a>'+
+    '</div>'+
+  '</div>';
+  var marker=L.marker([coords.lat,coords.lng],{icon:icon}).addTo(leafletMap).bindPopup(popup);
+  mapMarkers[i]=marker;
+}
+
+function closeMap(){
+  document.getElementById('mapModal').className='modal-bg';
+  if(leafletMap){leafletMap.remove();leafletMap=null;}
+  mapMarkers=[];
+  document.getElementById('map-loading').style.display='block';
+  document.getElementById('map-loading-text').textContent='Se încarcă harta...';
+  document.getElementById('map-list').innerHTML='';
+  document.getElementById('leaflet-map').innerHTML='';
+}
+
+var mmEl = document.getElementById('mapModal'); if(mmEl) mmEl.onclick=function(e){if(e.target===this)closeMap();};
+
+// Citire date: 1) ?v=code din Firebase 2) #d=base64 fallback 3) ?id= JSONP GAS legacy
+function load(){
+  var params = new URLSearchParams(window.location.search);
+  var vCode = params.get('v');
+  var id = params.get('id');
+  var hash = window.location.hash;
+
+  // Varianta 1: cod scurt Firebase ?v=cs09xxx
+  if(vCode){
+    var fbUrl = FIREBASE_URL + '/t/' + encodeURIComponent(vCode) + '.json';
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', fbUrl, true);
+    xhr.timeout = 15000;
+    xhr.onload = function(){
+      if(xhr.status >= 200 && xhr.status < 300){
+        try {
+          var res = JSON.parse(xhr.responseText);
+          if(res && res.data && Array.isArray(res.data) && res.data.length > 0){
+            render(res.data);
+            return;
+          }
+          document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Linkul a expirat sau nu conține date.</div>';
+        } catch(e){
+          document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Eroare date: '+e.message+'</div>';
+        }
+      } else {
+        document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Firebase HTTP '+xhr.status+'</div>';
+      }
+    };
+    xhr.ontimeout = function(){
+      document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">⏱️ Timeout Firebase.<br><br><button onclick="location.reload()" style="padding:8px 16px;background:#4a90e2;color:#fff;border:none;border-radius:6px;cursor:pointer">🔄 Reîncearcă</button></div>';
+    };
+    xhr.onerror = function(){
+      document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Nu s-a putut conecta la Firebase</div>';
+    };
+    xhr.send();
+    return;
+  }
+
+  // Varianta 2: datele in fragment #d=base64 (link lung, fara server)
+  if(hash && hash.indexOf('#d=') === 0){
+    try {
+      var b64 = hash.substring(3);
+      var jsonStr = decodeURIComponent(escape(atob(b64)));
+      var data = JSON.parse(jsonStr);
+      if(Array.isArray(data) && data.length > 0){
+        render(data);
+        return;
+      }
+    } catch(e){
+      document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date invalide în link: '+e.message+'</div>';
+      return;
+    }
+  }
+
+  // Varianta 3: fallback JSONP la GAS (legacy)
+  if(!id){
+    document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Link invalid</div>';
+    return;
+  }
+
+  var ua = navigator.userAgent;
+  var isEdge = /EdgA\//i.test(ua);
+  if(isEdge){
+    document.getElementById('root').innerHTML =
+      '<div class="msg" style="color:#f44336;padding:30px">' +
+        '<div style="font-size:48px;margin-bottom:16px">⚠️</div>' +
+        '<div style="font-size:16px;margin-bottom:12px"><b>Edge nu poate încărca datele pe Android</b></div>' +
+        '<div style="font-size:14px;color:var(--t2);margin-bottom:20px">Deschide acest link în <b>Chrome</b>.</div>' +
+        '<button onclick="copyCurrentUrl()" style="padding:10px 20px;background:#4a90e2;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">📋 Copiază linkul</button>' +
+      '</div>';
+    return;
+  }
+
+  var cbName = 'gasCb' + Math.floor(Math.random()*1000000);
+  var url = SCRIPT_URL + '?id=' + encodeURIComponent(id) + '&callback=' + cbName;
+  var handled = false;
+
+  var timer = setTimeout(function(){
+    if(handled) return;
+    handled = true;
+    try{ delete window[cbName]; }catch(e){}
+    document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">⏱️ Timeout. Roagă expeditorul să trimită linkul cu date incluse.<br><br><button onclick="location.reload()" style="padding:8px 16px;background:#4a90e2;color:#fff;border:none;border-radius:6px;cursor:pointer">🔄 Reîncearcă</button></div>';
+  }, 20000);
+
+  window[cbName] = function(data){
+    if(handled) return;
+    handled = true;
+    clearTimeout(timer);
+    try{ delete window[cbName]; }catch(e){}
+    if(data && data.error){ document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date negăsite.</div>'; return; }
+    if(Array.isArray(data) && data.length > 0){ render(data); return; }
+    document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date invalide.</div>';
+  };
+
+  var sc = document.createElement('script');
+  sc.src = url;
+  document.body.appendChild(sc);
+}
+
+function copyCurrentUrl(){
+  var url = window.location.href;
+  if(navigator.clipboard) navigator.clipboard.writeText(url).then(function(){ alert('Link copiat! Deschide-l în Chrome.'); });
+  else {
+    var t = document.createElement('textarea'); t.value=url; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+    alert('Link copiat!');
+  }
+}
+
+load();
+</script>
+</body>
+</html>
