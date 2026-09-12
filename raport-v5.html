@@ -423,19 +423,29 @@ function load(){
   }, 20000);
 
   window[cbName] = function(data){
+    console.log('CALLBACK CALLED', data);
     if(handled) return;
     handled = true;
     clearTimeout(timer);
     delete window[cbName];
     if(data && data.error){ document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date negăsite. Generează un link nou.</div>'; return; }
-    if(Array.isArray(data) && data.length > 0){ render(data); return; }
+    if(Array.isArray(data) && data.length > 0){
+      try { render(data); } catch(e){
+        console.error('RENDER ERROR:', e);
+        document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Eroare afișare: '+e.message+'</div>';
+      }
+      return;
+    }
     document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date invalide.</div>';
   };
 
+  console.log('LOADING:', url);
+  console.log('Callback name:', cbName);
   var sc = document.createElement('script');
   sc.src = url;
   sc.async = true;
-  // Nu mai folosim onerror - poate raporta false positive
+  sc.onload = function(){ console.log('SCRIPT LOADED'); };
+  sc.onerror = function(e){ console.error('SCRIPT ERROR:', e); };
   document.head.appendChild(sc);
 }
 
