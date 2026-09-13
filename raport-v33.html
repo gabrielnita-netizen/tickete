@@ -1,0 +1,1722 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Raport Tickete</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+:root{
+  --bg:#F2F4F3; --su:#FFFFFF;
+  --tx:#06141B; --t2:#4A5C6A; --t3:#9BA8AB;
+  --br:#CCD0CF; --br-lt:#E5E9E8;
+  --pr:#253745; --pr-lt:#DDE3E6;
+  --em:#253745; --em-lt:#DDE3E6;
+  --or:#4A5C6A; --or-lt:#E5E9E8;
+  --rd:#06141B; --rd-lt:#CCD0CF;
+  --bl:#253745; --bl-lt:#DDE3E6;
+  --pk:#4A5C6A; --pk-lt:#E5E9E8;
+  --pu:#253745; --pu-lt:#DDE3E6;
+  --yl:#4A5C6A; --yl-lt:#E5E9E8;
+  --tl:#253745; --tl-lt:#DDE3E6;
+  --check-green:#4A5C6A;
+}
+@media(prefers-color-scheme:dark){:root{
+  --bg:#06141B; --su:#11212D;
+  --tx:#CCD0CF; --t2:#9BA8AB; --t3:#4A5C6A;
+  --br:#253745; --br-lt:#1A2B37;
+  --pr:#9BA8AB; --pr-lt:#253745;
+  --em:#9BA8AB; --em-lt:#253745;
+  --or:#9BA8AB; --or-lt:#253745;
+  --rd:#CCD0CF; --rd-lt:#253745;
+  --bl:#9BA8AB; --bl-lt:#253745;
+  --pk:#9BA8AB; --pk-lt:#253745;
+  --pu:#9BA8AB; --pu-lt:#253745;
+  --yl:#9BA8AB; --yl-lt:#253745;
+  --tl:#9BA8AB; --tl-lt:#253745;
+  --check-green:#CCD0CF;
+}}
+
+body{font-family:-apple-system,BlinkMacSystemFont,'SF Pro Display','SF Pro Text',sans-serif;background:var(--bg);color:var(--tx);padding:24px 18px;font-size:16px;line-height:1.5;-webkit-font-smoothing:antialiased;letter-spacing:-.011em}
+.wrap{max-width:900px;margin:0 auto}
+
+h1{text-align:left;font-size:36px;font-weight:800;color:var(--tx);margin-bottom:6px;letter-spacing:-1.2px;line-height:1.1}
+.subtitle{color:var(--t2);font-size:16px;margin-bottom:28px;font-weight:400;letter-spacing:-.2px}
+
+/* Stats — playful cards */
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:28px}
+.sc{padding:20px 18px;border-radius:28px;text-align:left;transition:transform .15s ease;background:var(--su);border:1px solid var(--br)}
+.sc:nth-child(1),.sc:nth-child(2),.sc:nth-child(3){background:var(--su)}
+.sc:active{transform:scale(.97)}
+.sv{font-size:32px;font-weight:800;line-height:1;letter-spacing:-.7px;color:var(--tx)}
+.sc:nth-child(1) .sv,.sc:nth-child(2) .sv,.sc:nth-child(3) .sv{color:var(--tx)}
+.sl{font-size:13px;color:var(--tx);margin-top:8px;font-weight:600;letter-spacing:-.1px;opacity:.75}
+
+/* Buton harta — big rounded pill */
+.map-btn{background:var(--tx);color:var(--bg);border:none;border-radius:28px;padding:18px 24px;font-size:17px;font-weight:700;cursor:pointer;width:100%;letter-spacing:-.3px;transition:all .15s ease;display:flex;align-items:center;justify-content:center;gap:10px}
+.map-btn:active{transform:scale(.98);opacity:.85}
+
+/* Progress bar rezolvate */
+.progress-wrap{margin-bottom:24px;background:var(--su);border-radius:20px;padding:16px 18px;border:1px solid var(--br)}
+.progress-header{display:flex;justify-content:space-between;align-items:center;gap:12px;margin-bottom:12px;flex-wrap:wrap}
+.progress-text{font-size:15px;font-weight:600;color:var(--tx);letter-spacing:-.2px}
+.progress-filter{background:var(--br-lt);color:var(--tx);border:none;border-radius:100px;padding:8px 16px;font-size:13px;font-weight:600;cursor:pointer;transition:background-color .2s ease,color .2s ease,transform .15s ease;letter-spacing:-.1px}
+.progress-filter:active{transform:scale(.94)}
+.progress-filter.on{background:var(--tx);color:var(--bg)}
+.progress-bar{height:8px;background:var(--br-lt);border-radius:100px;overflow:hidden}
+.progress-fill{height:100%;background:var(--tx);border-radius:100px;transition:width .5s cubic-bezier(.34,1.3,.64,1)}
+
+/* Search + Sort */
+.search-sort-wrap{display:flex;gap:10px;margin-bottom:20px;flex-wrap:wrap}
+.search-input-wrap{flex:1;min-width:220px;position:relative;display:flex;align-items:center;background:var(--su);border:1px solid var(--br);border-radius:100px;padding:0 14px;transition:border-color .2s ease}
+.search-input-wrap:focus-within{border-color:var(--tx)}
+.search-icon{color:var(--t2);flex-shrink:0;margin-right:8px}
+#searchInput{flex:1;border:none;outline:none;padding:14px 0;font-size:15px;background:transparent;color:var(--tx);font-family:inherit;letter-spacing:-.2px;min-width:0}
+#searchInput::placeholder{color:var(--t3)}
+.search-clear{background:var(--br-lt);border:none;width:24px;height:24px;border-radius:50%;cursor:pointer;color:var(--t2);font-size:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0;font-weight:600}
+.search-clear:active{transform:scale(.9)}
+.sort-select{background:var(--su);border:1px solid var(--br);border-radius:100px;padding:14px 18px;font-size:15px;color:var(--tx);cursor:pointer;font-family:inherit;font-weight:600;letter-spacing:-.15px;outline:none;transition:border-color .2s ease;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3e%3cpath d='M1 1l5 5 5-5' stroke='%23888' stroke-width='1.8' fill='none' stroke-linecap='round' stroke-linejoin='round'/%3e%3c/svg%3e");background-repeat:no-repeat;background-position:right 16px center;padding-right:38px;min-width:180px}
+.sort-select:focus{border-color:var(--tx)}
+
+/* Group headers in table */
+tr.group-header td{padding:0!important;border:none!important;background:transparent!important}
+.group-header-inner{background:var(--br-lt);color:var(--tx);padding:10px 20px;font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.5px;border-radius:0;margin:16px 0 4px;display:flex;justify-content:space-between;align-items:center}
+.group-count{font-size:12px;color:var(--t2);font-weight:600;text-transform:none;letter-spacing:0}
+tr.group-header:first-child .group-header-inner{margin-top:0}
+@media(max-width:720px){
+  .group-header-inner{border-radius:100px;margin:12px 0 8px;padding:10px 16px}
+}
+
+/* Section titles */
+.sec{margin-bottom:28px}
+.sec-title{font-size:22px;color:var(--tx);letter-spacing:-.5px;margin-bottom:14px;font-weight:800;text-transform:none}
+
+/* Chip-uri categorii — monocrom */
+.cards{display:flex;flex-wrap:wrap;gap:10px}
+.card{background:var(--su);padding:14px 18px;border-radius:100px;border:1px solid var(--br);cursor:pointer;transition:background-color .25s ease,color .25s ease,border-color .25s ease,transform .25s cubic-bezier(.34,1.56,.64,1);user-select:none;display:inline-flex;align-items:center;gap:10px;font-size:16px;font-weight:600;color:var(--tx);letter-spacing:-.2px;min-height:48px}
+.card:active{transform:scale(.92)}
+.card.on{background:var(--tx);color:var(--bg);border-color:var(--tx);animation:chipPop .4s cubic-bezier(.34,1.56,.64,1)}
+@keyframes chipPop{
+  0%{transform:scale(.9)}
+  60%{transform:scale(1.08)}
+  100%{transform:scale(1)}
+}
+.cv{font-size:14px;font-weight:800;color:var(--t2);background:var(--br-lt);padding:3px 10px;border-radius:100px;min-width:26px;text-align:center;letter-spacing:0;transition:background-color .2s ease,color .2s ease}
+.card.on .cv{background:rgba(255,255,255,.15);color:var(--bg)}
+
+/* Elimina culori per tip - totul monocrom */
+.card[data-type]{background:var(--su);color:var(--tx);border:1px solid var(--br)}
+.card[data-type].on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+#locGrid .card{background:var(--su);color:var(--tx);border:1px solid var(--br)}
+#locGrid .card.on{background:var(--tx);color:var(--bg);border-color:var(--tx)}
+#locGrid .cv{background:var(--br-lt);color:var(--t2)}
+#locGrid .card.on .cv{background:rgba(255,255,255,.15);color:var(--bg)}
+
+/* Filter bar */
+.fbar{display:none;background:var(--br-lt);border-radius:20px;padding:14px 18px;margin-bottom:20px;font-size:15px;align-items:center;justify-content:space-between;gap:12px}
+.fbar.on{display:flex}
+.fbar span{color:var(--tx);font-weight:600;letter-spacing:-.2px}
+.fbar button{background:var(--tx);border:none;border-radius:100px;padding:8px 16px;color:var(--bg);cursor:pointer;font-size:14px;font-weight:700;letter-spacing:-.1px}
+
+/* Tabel — pentru desktop */
+.tw{background:var(--su);border-radius:28px;overflow:hidden;border:1px solid var(--br)}
+.tw > div{overflow-x:auto}
+table{width:100%;border-collapse:collapse;font-size:15px}
+thead{background:var(--br-lt)}
+th{padding:16px 20px;text-align:left;font-weight:700;color:var(--t2);border-bottom:1px solid var(--br);white-space:nowrap;font-size:12px;text-transform:uppercase;letter-spacing:.5px}
+td{padding:16px 20px;border-bottom:1px solid var(--br-lt);color:var(--tx);letter-spacing:-.15px;font-weight:500}
+tr:last-child td{border-bottom:none}
+tr:active td{background:var(--br-lt)}
+
+.tlink{color:var(--pr);cursor:pointer;font-weight:800;font-size:16px;text-decoration:none;letter-spacing:-.3px}
+.tlink:active{opacity:.6}
+
+/* BUTON REZOLVAT — mono cu check verde discret */
+.rezolvat-btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;background:var(--br-lt);color:var(--t2);border:none;border-radius:100px;padding:10px 18px;font-size:14px;font-weight:700;cursor:pointer;transition:background-color .3s ease,color .3s ease,transform .15s ease;min-height:40px;white-space:nowrap;letter-spacing:-.2px}
+.rezolvat-btn:active{transform:scale(.94)}
+.rezolvat-btn.done{background:var(--tx);color:var(--bg);animation:doneBounce .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes doneBounce{
+  0%{transform:scale(1)}
+  30%{transform:scale(.9)}
+  60%{transform:scale(1.08)}
+  100%{transform:scale(1)}
+}
+.rez-check{width:16px;height:16px;border:2px solid currentColor;border-radius:50%;flex-shrink:0;display:inline-flex;align-items:center;justify-content:center;background:transparent;transition:background-color .3s ease,border-color .3s ease}
+.rezolvat-btn.done .rez-check{background:var(--bg);border-color:var(--bg)}
+.rez-check-mark{display:none;color:var(--tx);font-size:10px;font-weight:900;line-height:1}
+.rezolvat-btn.done .rez-check-mark{display:block;animation:checkPop .35s cubic-bezier(.34,1.8,.64,1) .1s both}
+@keyframes checkPop{
+  0%{transform:scale(0)}
+  60%{transform:scale(1.3)}
+  100%{transform:scale(1)}
+}
+
+/* Rezolvat: doar butonul se schimba, nu tot randul */
+tr.rezolvat td{background:transparent}
+
+.cp{cursor:pointer}
+.cp:active{background:var(--br-lt)!important}
+.copied{color:var(--em)!important;font-weight:700!important}
+
+.empty{text-align:center;padding:60px 20px;color:var(--t2);font-size:15px}
+.msg{text-align:center;padding:100px 20px;color:var(--t2);font-size:17px;font-weight:500;letter-spacing:-.2px}
+.spinner{display:inline-block;width:24px;height:24px;border:3px solid var(--br);border-top-color:var(--pr);border-radius:50%;animation:spin .8s linear infinite;vertical-align:middle;margin-right:10px}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Modal sheet — burst animation din punctul de click */
+.modal-bg{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,10,5,.55);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);z-index:300;justify-content:center;align-items:center;padding:16px;opacity:0;transition:opacity .3s ease}
+.modal-bg.on{display:flex;opacity:1}
+#ov{display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(15,10,5,.55);backdrop-filter:blur(20px) saturate(180%);-webkit-backdrop-filter:blur(20px) saturate(180%);z-index:100;justify-content:center;align-items:flex-end;padding:0;opacity:0;transition:opacity .35s ease}
+#ov.on{display:flex;opacity:1}
+#pan{background:var(--su);border-radius:28px 28px 0 0;width:100%;max-width:640px;max-height:92vh;overflow-y:auto;position:relative;
+  --burst-x:50%;--burst-y:0;--burst-r:0;
+  clip-path:circle(var(--burst-r) at var(--burst-x) var(--burst-y));
+  -webkit-clip-path:circle(var(--burst-r) at var(--burst-x) var(--burst-y));
+  transition:clip-path .9s cubic-bezier(.22,1,.36,1),-webkit-clip-path .9s cubic-bezier(.22,1,.36,1)}
+#pan::before{content:'';position:absolute;top:8px;left:50%;transform:translateX(-50%);width:40px;height:5px;background:var(--br);border-radius:100px;opacity:.7}
+#ov.on #pan{--burst-r:150%}
+#ov.closing{opacity:0;transition:opacity .5s ease}
+#pan.closing{transform:translateY(100%);transition:transform .55s cubic-bezier(.32,.72,0,1)}
+@media(min-width:640px){
+  #pan.closing{transform:scale(.85);opacity:0;transition:transform .5s ease,opacity .5s ease}
+}
+@media(min-width:640px){
+  #ov{align-items:center;padding:24px}
+  #pan{border-radius:28px}
+  #pan::before{display:none}
+}
+.ph{display:flex;justify-content:space-between;align-items:center;padding:26px 24px 18px;position:sticky;top:0;background:var(--su);z-index:2}
+.ph h2{font-size:22px;color:var(--tx);font-weight:800;letter-spacing:-.5px}
+.xb{background:var(--br-lt);border:none;font-size:16px;cursor:pointer;color:var(--t2);width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:600;line-height:1;padding:0;transition:transform .15s ease}
+.xb:active{background:var(--br);transform:scale(.9)}
+.pb{padding:0 24px 24px}
+
+/* Scan section - buton si docs uploadate */
+.pan-scan-wrap{padding:0 24px 20px}
+.pan-scan-btn{display:flex;align-items:center;justify-content:center;gap:10px;width:100%;background:var(--br-lt);color:var(--tx);border:2px dashed var(--br);border-radius:16px;padding:14px 20px;font-size:15px;font-weight:700;cursor:pointer;min-height:52px;letter-spacing:-.2px;transition:background-color .2s ease,border-color .2s ease,transform .15s ease}
+.pan-scan-btn:active{transform:scale(.98)}
+.pan-scan-btn:hover{background:var(--su);border-color:var(--tx);border-style:solid}
+.pan-docs{display:grid;grid-template-columns:repeat(auto-fill,minmax(110px,1fr));gap:10px;margin-top:14px}
+.pan-docs:empty{margin-top:0}
+.pan-doc-item{position:relative;aspect-ratio:1/1.3;background:var(--br-lt);border-radius:12px;overflow:hidden;cursor:pointer;transition:transform .15s ease;border:1px solid var(--br)}
+.pan-doc-item:active{transform:scale(.96)}
+.pan-doc-thumb{width:100%;height:100%;object-fit:cover;display:block}
+.pan-doc-pdf{width:100%;height:100%;display:flex;align-items:center;justify-content:center;flex-direction:column;color:var(--pr);font-weight:700;background:linear-gradient(135deg,var(--pr-lt),var(--br-lt))}
+.pan-doc-pdf svg{width:36px;height:36px;margin-bottom:6px}
+.pan-doc-pdf-label{font-size:11px;font-weight:700;letter-spacing:.3px}
+.pan-doc-name{position:absolute;bottom:0;left:0;right:0;background:linear-gradient(transparent,rgba(0,0,0,.75));color:#fff;padding:8px 8px 6px;font-size:11px;font-weight:600;letter-spacing:-.1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.pan-doc-delete{position:absolute;top:6px;right:6px;background:rgba(0,0,0,.6);color:#fff;border:none;width:24px;height:24px;border-radius:50%;cursor:pointer;font-size:12px;display:flex;align-items:center;justify-content:center;line-height:1;padding:0;opacity:0;transition:opacity .2s ease}
+.pan-doc-item:hover .pan-doc-delete{opacity:1}
+@media(hover:none){.pan-doc-delete{opacity:1}}
+
+/* Scanner Modal */
+.scan-modal{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:400;flex-direction:column}
+.scan-modal.on{display:flex}
+.scan-header{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;background:rgba(0,0,0,.5);color:#fff;flex-shrink:0}
+.scan-close{background:rgba(255,255,255,.15);border:none;color:#fff;width:36px;height:36px;border-radius:50%;font-size:16px;cursor:pointer;display:flex;align-items:center;justify-content:center;font-weight:600}
+.scan-title{font-size:16px;font-weight:700;letter-spacing:-.2px}
+.scan-pages-btn{background:var(--tx);color:var(--bg);border:none;border-radius:100px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;min-width:56px}
+.scan-body{flex:1;position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center}
+#scan-video{max-width:100%;max-height:100%;object-fit:contain;display:block}
+#scan-overlay{position:absolute;top:0;left:0;pointer-events:none}
+.scan-loading{position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.8);color:#fff;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-size:15px;z-index:5}
+.scan-loading.on{display:flex}
+.scan-loading .spinner{width:40px;height:40px;border:4px solid rgba(255,255,255,.2);border-top-color:#fff;border-radius:50%;animation:spin .9s linear infinite}
+.scan-preview-wrap{display:none;position:absolute;top:0;left:0;width:100%;height:100%;background:#000;align-items:center;justify-content:center;z-index:3}
+.scan-preview-wrap.on{display:flex}
+#scan-preview{max-width:100%;max-height:100%;object-fit:contain}
+.scan-controls{display:flex;align-items:center;justify-content:space-around;padding:20px;background:rgba(0,0,0,.6);flex-shrink:0}
+.scan-capture{width:70px;height:70px;border-radius:50%;background:transparent;border:4px solid #fff;cursor:pointer;padding:4px;display:flex;align-items:center;justify-content:center;transition:transform .1s ease}
+.scan-capture:active{transform:scale(.92)}
+.scan-capture-inner{width:100%;height:100%;background:#fff;border-radius:50%}
+.scan-btn-secondary{background:rgba(255,255,255,.15);color:#fff;border:none;border-radius:100px;padding:12px 20px;font-size:14px;font-weight:700;cursor:pointer}
+.scan-done-bar{display:none;padding:16px 20px;gap:10px;background:#000;border-top:1px solid rgba(255,255,255,.1);flex-direction:column;flex-shrink:0}
+.scan-done-bar.on{display:flex}
+.scan-btn-full{background:var(--tx);color:var(--bg);border:none;border-radius:100px;padding:14px 20px;font-size:15px;font-weight:700;cursor:pointer}
+.scan-btn-alt{background:rgba(255,255,255,.15);color:#fff}
+
+/* Doc viewer */
+.doc-viewer{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;background:#000;z-index:500;flex-direction:column}
+.doc-viewer.on{display:flex}
+.doc-viewer-header{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:14px 18px;background:rgba(0,0,0,.7);color:#fff;flex-shrink:0}
+.doc-viewer-name{flex:1;font-size:15px;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;letter-spacing:-.1px}
+.doc-viewer-action{background:var(--tx);color:var(--bg);border:none;border-radius:100px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;text-decoration:none;white-space:nowrap}
+.doc-viewer-body{flex:1;overflow:auto;display:flex;align-items:center;justify-content:center;padding:20px;background:#111}
+.doc-viewer-body img{max-width:100%;max-height:100%;object-fit:contain}
+.doc-viewer-body iframe{width:100%;height:100%;border:none;background:#fff;border-radius:8px}
+
+/* Butoane actiuni in modal - Rezolvat + Send WA (stack vertical) */
+.pan-actions{display:flex;flex-direction:column;gap:10px;padding:0 24px 20px}
+.pan-rez-btn{width:100%;min-height:52px;padding:14px 20px;font-size:16px;border-radius:100px;box-sizing:border-box}
+.pan-wa-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--br-lt);color:var(--t3);border:none;border-radius:100px;padding:14px 20px;font-size:16px;font-weight:700;cursor:not-allowed;min-height:52px;letter-spacing:-.2px;transition:background-color .3s ease,color .3s ease,transform .15s ease;box-sizing:border-box}
+.pan-wa-btn.on{background:#25D366;color:#fff;cursor:pointer;animation:waAppear .5s cubic-bezier(.34,1.56,.64,1)}
+.pan-wa-btn.on:active{transform:scale(.98)}
+@keyframes waAppear{
+  0%{transform:scale(.9)}
+  60%{transform:scale(1.05)}
+  100%{transform:scale(1)}
+}
+
+/* Detalii ticket — rânduri cu fade stagger dupa burst */
+.fr{display:flex;justify-content:space-between;align-items:flex-start;gap:16px;padding:16px 0;border-bottom:1px solid var(--br-lt);opacity:0;transform:translateY(10px);transition:opacity .45s ease,transform .45s ease}
+#ov.on .fr{opacity:1;transform:translateY(0)}
+#ov.on .fr:nth-child(1){transition-delay:.55s}
+#ov.on .fr:nth-child(2){transition-delay:.62s}
+#ov.on .fr:nth-child(3){transition-delay:.69s}
+#ov.on .fr:nth-child(4){transition-delay:.76s}
+#ov.on .fr:nth-child(5){transition-delay:.83s}
+#ov.on .fr:nth-child(6){transition-delay:.90s}
+#ov.on .fr:nth-child(7){transition-delay:.97s}
+#ov.on .fr:nth-child(8){transition-delay:1.04s}
+#ov.on .fr:nth-child(9){transition-delay:1.11s}
+#ov.on .fr:nth-child(10){transition-delay:1.18s}
+.fr:last-child{border-bottom:none}
+.fl{font-size:15px;color:var(--t2);font-weight:500;flex-shrink:0;letter-spacing:-.15px;text-transform:none;padding-top:0;min-width:auto}
+.fv{font-size:16px;line-height:1.5;word-break:break-word;cursor:pointer;color:var(--tx);font-weight:600;text-align:right;letter-spacing:-.2px}
+.fv:active{color:var(--pr)}
+.fv.em{color:var(--t3);cursor:default;font-weight:400}
+.badge{display:inline-block;padding:5px 14px;border-radius:100px;background:var(--pr);color:#fff;font-weight:700;font-size:14px;letter-spacing:-.1px}
+
+/* Telefoane clickable */
+.fv-phones{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end}
+.phone-btn{display:inline-flex;align-items:center;gap:6px;background:var(--em-lt);color:var(--em);border:none;border-radius:100px;padding:8px 14px;font-size:14px;font-weight:700;text-decoration:none;transition:transform .15s ease,background-color .2s ease;letter-spacing:-.1px;cursor:pointer}
+.phone-btn:active{transform:scale(.94)}
+.phone-btn:hover{background:var(--em);color:#fff}
+.phone-link{display:inline-flex;align-items:center;gap:4px;background:var(--em-lt);color:var(--em);border-radius:8px;padding:2px 8px;font-weight:600;text-decoration:none;font-size:.9em;margin:0 2px}
+.phone-link:active{transform:scale(.95)}
+.fv-note{text-align:right}
+
+button{padding:10px 18px;border:none;border-radius:100px;background:var(--su);color:var(--pr);cursor:pointer;font-size:15px;font-weight:600}
+
+/* MOBILE — cărți jucăușe */
+@media(max-width:720px){
+  body{padding:20px 16px}
+  .tw{background:transparent;overflow:visible}
+  .tw > div{overflow:visible}
+  table,thead,tbody,tr,td{display:block;width:100%}
+  thead{display:none}
+  tbody{display:flex;flex-direction:column;gap:14px}
+  tr{background:var(--su);border-radius:28px;padding:20px;border:none;position:relative}
+  tr.rezolvat{background:var(--su)}
+  td{padding:8px 0;border:none;display:flex;justify-content:space-between;align-items:center;gap:12px;letter-spacing:-.15px;font-size:16px;font-weight:600}
+  .rowlbl{font-size:15px;color:var(--t2);font-weight:500;flex-shrink:0;letter-spacing:-.15px}
+  td:first-child{padding-top:0;padding-bottom:8px;justify-content:flex-start}
+  td:first-child .tlink{font-size:28px;font-weight:800;letter-spacing:-.7px}
+  td:nth-child(2){padding-top:6px;padding-bottom:16px;border-bottom:1px solid var(--br-lt);margin-bottom:8px;justify-content:flex-start;display:flex;gap:8px;flex-wrap:wrap}
+  td:nth-child(2) .rezolvat-btn{flex:1;min-width:120px;padding:14px;font-size:15px;min-height:48px;border-radius:16px}
+  td:nth-child(2) .row-wa-btn{flex:1;min-width:120px;display:flex;align-items:center;justify-content:center;gap:6px;background:var(--br-lt);color:var(--t3);border:none;border-radius:16px;padding:14px;font-size:15px;font-weight:700;cursor:not-allowed;min-height:48px;box-sizing:border-box;transition:background-color .3s ease,color .3s ease,transform .15s ease}
+  td:nth-child(2) .row-wa-btn.on{background:#25D366;color:#fff;cursor:pointer}
+  td:nth-child(2) .row-wa-btn.on:active{transform:scale(.96)}
+  td.cp{text-align:right}
+  .cards{gap:10px}
+  h1{font-size:32px;margin-bottom:4px}
+  .subtitle{font-size:15px;margin-bottom:24px}
+  .sv{font-size:28px}
+  .sec-title{font-size:20px}
+}
+@media(min-width:721px){.rowlbl{display:none}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>Tickete</h1>
+  <p class="subtitle" id="subtitle">Raport intervenții teren</p>
+  <div id="root"><div class="msg"><span class="spinner"></span>Se încarcă datele...</div></div>
+</div>
+
+<div id="ov">
+  <div id="pan">
+    <div class="ph"><h2 id="ptitle">Detalii</h2><button class="xb" id="xbtn">✕</button></div>
+    <div class="pan-actions" id="pan-actions">
+      <button class="rezolvat-btn pan-rez-btn" id="pan-rez"><span class="rez-check"><span class="rez-check-mark">✓</span></span>Rezolvat</button>
+      <button class="pan-wa-btn" id="pan-wa">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12.001 2.003C6.478 2.003 2 6.481 2 12.003c0 1.762.462 3.478 1.34 4.986L2 22.003l5.16-1.354a9.966 9.966 0 004.841 1.232h.004c5.523 0 10.001-4.478 10.001-10 0-5.523-4.478-10.001-10.005-9.878z"/></svg>
+        Send WA
+      </button>
+    </div>
+    <div class="pan-scan-wrap" id="pan-scan-wrap">
+      <button class="pan-scan-btn" id="pan-scan">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7V5a2 2 0 0 1 2-2h2"/><path d="M17 3h2a2 2 0 0 1 2 2v2"/><path d="M21 17v2a2 2 0 0 1-2 2h-2"/><path d="M7 21H5a2 2 0 0 1-2-2v-2"/><rect x="7" y="8" width="10" height="8" rx="1"/></svg>
+        Scan document
+      </button>
+      <div class="pan-docs" id="pan-docs"></div>
+    </div>
+    <div class="pb" id="pbody"></div>
+  </div>
+</div>
+
+<!-- Scanner Modal -->
+<div id="scan-modal" class="scan-modal">
+  <div class="scan-header">
+    <button class="scan-close" id="scan-close">✕</button>
+    <div class="scan-title">Scan document</div>
+    <button class="scan-pages-btn" id="scan-pages-btn">0</button>
+  </div>
+  <div class="scan-body" id="scan-body">
+    <video id="scan-video" autoplay playsinline muted></video>
+    <canvas id="scan-overlay"></canvas>
+    <div class="scan-loading" id="scan-loading">
+      <div class="spinner"></div>
+      <div id="scan-loading-text">Se încarcă motorul scanner...</div>
+    </div>
+    <div class="scan-preview-wrap" id="scan-preview-wrap">
+      <canvas id="scan-preview"></canvas>
+    </div>
+  </div>
+  <div class="scan-controls" id="scan-controls">
+    <button class="scan-btn-secondary" id="scan-retake" style="display:none">↻ Refă</button>
+    <button class="scan-capture" id="scan-capture">
+      <div class="scan-capture-inner"></div>
+    </button>
+    <button class="scan-btn-secondary" id="scan-accept" style="display:none">✓ Adaugă</button>
+  </div>
+  <div class="scan-done-bar" id="scan-done-bar">
+    <button class="scan-btn-full" id="scan-finish-pdf">Salvează ca PDF</button>
+    <button class="scan-btn-full scan-btn-alt" id="scan-finish-jpg">Salvează ca JPEG</button>
+  </div>
+</div>
+
+<!-- Doc viewer -->
+<div id="doc-viewer" class="doc-viewer">
+  <div class="doc-viewer-header">
+    <button class="scan-close" id="doc-viewer-close">✕</button>
+    <div id="doc-viewer-name" class="doc-viewer-name">Document</div>
+    <a id="doc-viewer-download" class="doc-viewer-action" download>⬇ Descarcă</a>
+  </div>
+  <div class="doc-viewer-body" id="doc-viewer-body"></div>
+</div>
+
+<!-- WA Panel - apare dupa rezolvare -->
+<div id="wa-panel" style="display:none;position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#25D366;color:#fff;border-radius:12px;padding:14px 20px;box-shadow:0 4px 20px rgba(0,0,0,.3);z-index:300;display:none;align-items:center;gap:12px;max-width:380px;width:90%">
+  <span id="wa-text" style="font-size:13px;font-weight:500;flex:1"></span>
+  <button id="wa-send-btn" style="background:#fff;color:#25D366;border:none;border-radius:8px;padding:8px 14px;font-weight:700;cursor:pointer;font-size:13px;white-space:nowrap">💬 Send WA</button>
+  <button id="wa-close-btn" style="background:none;border:none;color:#fff;font-size:18px;cursor:pointer;line-height:1;padding:0 4px">✕</button>
+</div>
+
+<!-- Map Modal -->
+<div class="modal-bg" id="mapModal" style="z-index:300">
+  <div style="background:var(--su);border-radius:12px;width:100%;max-width:960px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--br);flex-shrink:0;gap:8px;flex-wrap:wrap">
+      <h2 style="font-size:16px;color:var(--pr)">🗺️ Hartă Tickete</h2>
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <button id="mapOptimizeBtn" onclick="toggleRoute()" style="background:var(--tx);color:var(--bg);border:none;border-radius:100px;padding:8px 14px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:-.1px">🧭 Optimizează traseu</button>
+        <span id="map-count" style="font-size:13px;color:var(--t2);font-weight:600"></span>
+        <button onclick="closeMap()" style="background:var(--br-lt);border:none;font-size:16px;cursor:pointer;color:var(--t2);width:32px;height:32px;border-radius:50%;display:flex;align-items:center;justify-content:center">✕</button>
+      </div>
+    </div>
+    <div id="map-container" style="flex:1;min-height:400px;position:relative">
+      <div id="map-loading" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);text-align:center;color:var(--t2);z-index:10">
+        <div style="font-size:40px;margin-bottom:8px">🗺️</div>
+        <div id="map-loading-text">Se încarcă harta...</div>
+      </div>
+      <div id="leaflet-map" style="width:100%;height:100%;min-height:400px"></div>
+    </div>
+    <div id="map-list" style="max-height:260px;overflow-y:auto;border-top:1px solid var(--br);flex-shrink:0"></div>
+  </div>
+</div>
+
+<script>
+var DATA = [];
+var activeType = null;
+var activeLoc = null;
+var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxG6PtyTahCGXBZpnKzhn45Man-magAfg85CfgGu-mWSTBqoXUhfqL13LT5-ppBZWqU/exec';
+var FIREBASE_URL = 'https://tickete-jud-default-rtdb.europe-west1.firebasedatabase.app';
+var CLOUDINARY_CLOUD = 'ghcdrrow';
+var CLOUDINARY_PRESET = 'tickete_unsigned';
+var SHEET_ID = '1feTSTO4FCFTUJBxiD0rd2ICF30jZE9pX6oihHxznkAY';
+
+var SHARE_CODE = null;
+
+// Persistenta status rezolvat in Firebase
+function saveResolvedStatus(ticketNumber, resolved){
+  if(!SHARE_CODE) return;
+  var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/resolved.json';
+  var payload = {};
+  // Firebase: null sterge cheia
+  payload[ticketNumber] = resolved ? true : null;
+  var xhr = new XMLHttpRequest();
+  xhr.open('PATCH', url, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.send(JSON.stringify(payload));
+}
+
+function s(v){ return (v||'').toString(); }
+
+// Detecteaza numere de telefon RO (mobile 07XX si fix 02XX/03XX)
+// Suporta formate: 0722 946 495, +40771209277, 0771-209-277
+function extractPhones(text){
+  if(!text) return [];
+  var re = /(\+?40|0)[\s.-]?(7\d{2}|2\d{2}|3\d{2})[\s.-]?\d{3}[\s.-]?\d{3}/g;
+  var matches = text.match(re) || [];
+  var seen = {};
+  var out = [];
+  for(var i=0;i<matches.length;i++){
+    var digits = matches[i].replace(/[^\d+]/g,'');
+    // Normalizeaza la format +40
+    if(digits.charAt(0)==='0') digits = '+40' + digits.substring(1);
+    else if(digits.substring(0,2)==='40' && digits.charAt(0)!=='+') digits = '+' + digits;
+    if(!seen[digits]){
+      seen[digits] = true;
+      out.push({ raw: matches[i], tel: digits });
+    }
+  }
+  return out;
+}
+
+// Inlocuieste numerele de telefon din text cu link-uri tel: stilate
+function linkifyPhones(text){
+  if(!text) return '';
+  return s(text).replace(/(\+?40|0)[\s.-]?(7\d{2}|2\d{2}|3\d{2})[\s.-]?\d{3}[\s.-]?\d{3}/g, function(match){
+    var digits = match.replace(/[^\d+]/g,'');
+    if(digits.charAt(0)==='0') digits = '+40' + digits.substring(1);
+    else if(digits.substring(0,2)==='40' && digits.charAt(0)!=='+') digits = '+' + digits;
+    return '<a href="tel:'+digits+'" class="phone-link" onclick="event.stopPropagation()">📞 '+match+'</a>';
+  });
+}
+
+// Converteste data (numar serial Excel, timestamp JS ms, sau string) in dd.mm.yyyy hh:mm
+// Daca e gol/invalid, intoarce "NA"
+function fmtDate(v){
+  if(v===null || v===undefined || v==='' || v==='NA') return 'NA';
+  var d;
+  if(typeof v === 'number' || (/^\d+(\.\d+)?$/).test(String(v))){
+    var num = parseFloat(v);
+    if(num > 1e10){
+      // Timestamp JS millisecunde (Date.now)
+      d = new Date(num);
+    } else {
+      // Serial Excel: (serial - 25569) * 86400000 = timestamp ms
+      if(num < 1 || num > 100000) return 'NA';
+      d = new Date(Math.round((num - 25569) * 86400 * 1000));
+    }
+  } else {
+    d = new Date(v);
+  }
+  if(!d || isNaN(d.getTime())) return 'NA';
+  var pad = function(n){ return n<10?'0'+n:''+n; };
+  var dd = pad(d.getDate()), mm = pad(d.getMonth()+1), yy = d.getFullYear();
+  var hh = pad(d.getHours()), mn = pad(d.getMinutes());
+  var hasTime = hh!=='00' || mn!=='00';
+  return dd+'.'+mm+'.'+yy + (hasTime ? ' '+hh+':'+mn : '');
+}
+
+function cp(txt, el){
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(txt).then(function(){ flash(el); }).catch(function(){ fb(txt); flash(el); });
+  } else { fb(txt); flash(el); }
+}
+function fb(txt){ var t=document.createElement('textarea'); t.value=txt; t.style.cssText='position:fixed;opacity:0'; document.body.appendChild(t); t.focus(); t.select(); try{document.execCommand('copy');}catch(e){} document.body.removeChild(t); }
+function flash(el){ el.classList.add('copied'); setTimeout(function(){ el.classList.remove('copied'); }, 700); }
+
+// Panel detalii
+var CURRENT_PANEL_IDX = -1;
+
+function closePanel(){
+  var ov = document.getElementById('ov');
+  var pan = document.getElementById('pan');
+  if(!ov.classList.contains('on')) return;
+  pan.classList.add('closing');
+  ov.classList.add('closing');
+  setTimeout(function(){
+    ov.className = '';
+    pan.classList.remove('closing');
+  }, 550);
+}
+var xbtnEl = document.getElementById('xbtn');
+if(xbtnEl) xbtnEl.onclick = closePanel;
+var ovEl = document.getElementById('ov');
+if(ovEl) ovEl.onclick = function(e){ if(e.target===this) closePanel(); };
+
+// Handler butoane modal: Rezolvat + Send WA
+var panRezEl = document.getElementById('pan-rez');
+if(panRezEl) panRezEl.onclick = function(){
+  if(CURRENT_PANEL_IDX < 0) return;
+  var r = DATA[CURRENT_PANEL_IDX];
+  if(!r) return;
+  if(r._rezolvat){
+    // Toggle inapoi
+    DATA[CURRENT_PANEL_IDX]._rezolvat = false;
+    saveResolvedStatus(s(r.t), false);
+    updatePanelButtons();
+    updateTable();
+    updateProgress();
+  } else {
+    DATA[CURRENT_PANEL_IDX]._rezolvat = true;
+    saveResolvedStatus(s(r.t), true);
+    updatePanelButtons();
+    updateTable();
+    updateProgress();
+    logToSheet(r, function(){});
+  }
+};
+
+var panWaEl = document.getElementById('pan-wa');
+if(panWaEl) panWaEl.onclick = function(){
+  if(!panWaEl.classList.contains('on')) return;
+  if(CURRENT_PANEL_IDX < 0) return;
+  var r = DATA[CURRENT_PANEL_IDX];
+  if(!r || !r._rezolvat) return;
+  var waMsg = buildWAMessage(r);
+  var msg = encodeURIComponent(waMsg);
+  var phone = '40786590179';
+  var nativeUrl = 'whatsapp://send?phone='+phone+'&text='+msg;
+  var webUrl = 'https://wa.me/'+phone+'?text='+msg;
+  try {
+    window.location.href = nativeUrl;
+    setTimeout(function(){ window.open(webUrl, '_blank'); }, 800);
+  } catch(e){
+    window.open(webUrl, '_blank');
+  }
+};
+
+function updatePanelButtons(){
+  if(CURRENT_PANEL_IDX < 0) return;
+  var r = DATA[CURRENT_PANEL_IDX];
+  if(!r) return;
+  var rezBtn = document.getElementById('pan-rez');
+  var waBtn = document.getElementById('pan-wa');
+  if(r._rezolvat){
+    rezBtn.classList.add('done');
+    waBtn.classList.add('on');
+  } else {
+    rezBtn.classList.remove('done');
+    waBtn.classList.remove('on');
+  }
+}
+
+function openPanel(i, clickX, clickY){
+  var r = DATA[i]; if(!r) return;
+  CURRENT_PANEL_IDX = i;
+  document.getElementById('ptitle').textContent = 'Ticket #' + s(r.t);
+  updatePanelButtons();
+  renderPanelDocs(s(r.t));
+  var fields = [['Account',r.a,false],['Beneficiar',r.b,false],['Obiectiv',r.ob,false],['Localitate',r.l,false],['Adresă',r.ad,false],['Județ',r.j,false],['Tip',r.ty,true],['Notă',r.n,false],['Inițiere',fmtDate(r.d),false],['Programată',fmtDate(r.dp),false]];
+  var html = '';
+  // Detecteaza telefoane in nota (si adresa/beneficiar ca fallback)
+  var phones = extractPhones(s(r.n) + ' ' + s(r.ad) + ' ' + s(r.b));
+  if(phones.length > 0){
+    var phonesHtml = '<div class="fr fr-phones"><span class="fl">Sună</span><span class="fv fv-phones">';
+    for(var pi=0;pi<phones.length;pi++){
+      phonesHtml += '<a href="tel:'+phones[pi].tel+'" class="phone-btn">📞 '+phones[pi].raw+'</a>';
+    }
+    phonesHtml += '</span></div>';
+    html += phonesHtml;
+  }
+  for(var k=0;k<fields.length;k++){
+    var lbl=fields[k][0], val=s(fields[k][1]), badge=fields[k][2], vh;
+    // Sari peste datele NA (Inițiere/Programată)
+    if((lbl==='Inițiere' || lbl==='Programată') && (val==='NA' || !val)) continue;
+    if(!val){
+      vh = (lbl==='Inițiere' || lbl==='Programată')
+        ? '<span class="fv">NA</span>'
+        : '<span class="fv em">—</span>';
+    }
+    else if(badge){ vh='<span class="fv"><span class="badge">'+val+'</span></span>'; }
+    else if(lbl==='Notă'){
+      // Nota: transforma telefoanele in link-uri clickable inline
+      vh='<span class="fv fv-note">'+linkifyPhones(val).replace(/\n/g,'<br>')+'</span>';
+    }
+    else{ vh='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+val.replace(/\n/g,'<br>')+'</span>'; }
+    html += '<div class="fr"><span class="fl">'+lbl+'</span>'+vh+'</div>';
+  }
+  document.getElementById('pbody').innerHTML = html;
+  document.querySelectorAll('#pbody .fv[data-val]').forEach(function(el){ el.onclick=function(){ cp(el.getAttribute('data-val'),el); }; });
+
+  // BURST animation - deschide din punctul click-ului
+  var pan = document.getElementById('pan');
+  var ov = document.getElementById('ov');
+  // Reset - inchide clip-path la 0
+  ov.classList.remove('on');
+  // Arata modal invizibil (opacity 0 via transition) ca sa masuram pan
+  ov.style.display = 'flex';
+  var rect = pan.getBoundingClientRect();
+  var ox = (typeof clickX === 'number') ? (clickX - rect.left) : rect.width/2;
+  var oy = (typeof clickY === 'number') ? (clickY - rect.top) : rect.height/2;
+  // Raza maxima ca sa acopere tot modalul
+  var maxR = Math.max(
+    Math.sqrt(ox*ox + oy*oy),
+    Math.sqrt((rect.width-ox)*(rect.width-ox) + oy*oy),
+    Math.sqrt(ox*ox + (rect.height-oy)*(rect.height-oy)),
+    Math.sqrt((rect.width-ox)*(rect.width-ox) + (rect.height-oy)*(rect.height-oy))
+  );
+  pan.style.setProperty('--burst-x', ox + 'px');
+  pan.style.setProperty('--burst-y', oy + 'px');
+  pan.style.setProperty('--burst-r', '0px');
+  // Reset scroll
+  pan.scrollTop = 0;
+  // Force reflow apoi porneste animatia
+  void pan.offsetWidth;
+  ov.style.display = '';
+  ov.className = 'on';
+  // Seteaza raza finala (transition o va anima)
+  requestAnimationFrame(function(){
+    pan.style.setProperty('--burst-r', maxR + 'px');
+  });
+}
+
+// Panel rezolvat
+function openRezolvat(i){
+  var r = DATA[i]; if(!r) return;
+  var idx = i;
+  // Daca e deja rezolvat -> toggle inapoi la portocaliu (direct, fara confirm)
+  if(r._rezolvat){
+    DATA[idx]._rezolvat = false;
+    saveResolvedStatus(s(r.t), false);
+    updateTable();
+    updateProgress();
+    return;
+  }
+  // Marcheaza vizual imediat
+  markRezolvat(idx);
+  saveResolvedStatus(s(r.t), true);
+  // Salveaza in Google Sheets
+  logToSheet(r, function(ok){
+    showWANotif(r);
+  });
+}
+
+function markRezolvat(idx){
+  DATA[idx]._rezolvat = true;
+  updateTable();
+  updateProgress();
+}
+
+function buildWAMessage(r){
+  var ora = new Date().toLocaleString('ro-RO');
+  return '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
+}
+
+function showWANotif(r){
+  // Bara verde de jos eliminata - Send WA e acum in modal
+  return;
+}
+
+function logToSheet(r, cb){
+  if(!SHEET_ID){ if(cb) cb(false); return; }
+  var ora = new Date().toLocaleString('ro-RO');
+  var row = [s(r.t),s(r.b),s(r.ad),s(r.l),s(r.ty),fmtDate(r.dp),ora];
+  var cbName = 'cbSheet'+Date.now();
+  var url = SCRIPT_URL+'?action=sheet&sid='+encodeURIComponent(SHEET_ID)+'&row='+encodeURIComponent(JSON.stringify(row))+'&callback='+cbName;
+  window[cbName] = function(data){
+    delete window[cbName];
+    if(cb) cb(data && data.ok);
+  };
+  var sc = document.createElement('script'); sc.src=url;
+  sc.onerror=function(){ delete window[cbName]; if(cb) cb(false); };
+  document.head.appendChild(sc);
+}
+
+var SORT_MODE = 'default';
+
+function filtered(){
+  var showOnlyUnresolved = false;
+  var pf = document.getElementById('progressFilter');
+  if(pf && pf.getAttribute('data-active')==='true') showOnlyUnresolved = true;
+
+  var q = '';
+  var si = document.getElementById('searchInput');
+  if(si) q = (si.value||'').toLowerCase().trim();
+
+  var result = DATA.filter(function(r){
+    if(showOnlyUnresolved && r._rezolvat) return false;
+    if(activeType && (r.ty||'?')!==activeType) return false;
+    if(activeLoc && (r.l||'')!==activeLoc) return false;
+    if(q){
+      var hay = (s(r.t)+' '+s(r.b)+' '+s(r.ob)+' '+s(r.ad)+' '+s(r.l)+' '+s(r.n)+' '+s(r.ty)).toLowerCase();
+      if(hay.indexOf(q) < 0) return false;
+    }
+    return true;
+  });
+
+  // Sortare
+  var mode = SORT_MODE;
+  if(mode === 'localitate'){
+    result.sort(function(a,b){ return s(a.l).localeCompare(s(b.l),'ro') || s(a.t).localeCompare(s(b.t)); });
+  } else if(mode === 'tip'){
+    result.sort(function(a,b){ return s(a.ty).localeCompare(s(b.ty),'ro') || s(a.t).localeCompare(s(b.t)); });
+  } else if(mode === 'data'){
+    result.sort(function(a,b){
+      var da = parseFloat(a.dp)||parseFloat(a.d)||0;
+      var db = parseFloat(b.dp)||parseFloat(b.d)||0;
+      if(da && db) return da - db;
+      if(da) return -1;
+      if(db) return 1;
+      return 0;
+    });
+  } else if(mode === 'status'){
+    result.sort(function(a,b){
+      var ra = a._rezolvat?1:0, rb = b._rezolvat?1:0;
+      return ra - rb;
+    });
+  }
+  return result;
+}
+
+function updateProgress(){
+  var total = DATA.length;
+  var done = 0;
+  for(var i=0;i<DATA.length;i++){ if(DATA[i]._rezolvat) done++; }
+  var pct = total>0 ? Math.round((done/total)*100) : 0;
+  var textEl = document.getElementById('progressText');
+  var fillEl = document.getElementById('progressFill');
+  if(textEl) textEl.textContent = done+' din '+total+' rezolvate ('+pct+'%)';
+  if(fillEl) fillEl.style.width = pct+'%';
+}
+function toggleType(type){ activeType=(activeType===type)?null:type; document.querySelectorAll('#typeGrid .card').forEach(function(el){ el.className='card'+(el.getAttribute('data-type')===activeType?' on':''); }); updateTable(); }
+function toggleLoc(loc){ activeLoc=(activeLoc===loc)?null:loc; document.querySelectorAll('#locGrid .card').forEach(function(el){ el.className='card'+(el.getAttribute('data-loc')===activeLoc?' on':''); }); updateTable(); }
+function clearFilters(){ activeType=null;activeLoc=null; document.querySelectorAll('.card').forEach(function(el){ el.className='card'; }); updateTable(); }
+
+function updateTable(){
+  var src=filtered();
+  var groupBy = null;
+  if(SORT_MODE === 'localitate') groupBy = 'l';
+  else if(SORT_MODE === 'tip') groupBy = 'ty';
+
+  var rows = '';
+  var lastGroup = null;
+  for(var ri=0; ri<src.length; ri++){
+    var r = src[ri];
+    var i = DATA.indexOf(r);
+    // Insert group header
+    if(groupBy){
+      var g = s(r[groupBy]) || '—';
+      if(g !== lastGroup){
+        lastGroup = g;
+        var count = src.filter(function(x){ return s(x[groupBy]) === g; }).length;
+        rows += '<tr class="group-header"><td colspan="8"><div class="group-header-inner">'+g+' <span class="group-count">'+count+' tickete</span></div></td></tr>';
+      }
+    }
+    var rowCls=r._rezolvat?' class="rezolvat"':'';
+    rows += '<tr'+rowCls+'>'+
+      '<td><span class="tlink" data-idx="'+i+'">#'+s(r.t)+'</span></td>'+
+      '<td>'+(r._rezolvat?'<button class="rezolvat-btn done" data-idx="'+i+'"><span class="rez-check"><span class="rez-check-mark">✓</span></span>Rezolvat</button>':'<button class="rezolvat-btn" data-idx="'+i+'"><span class="rez-check"><span class="rez-check-mark">✓</span></span>Rezolvat</button>')+'<button class="row-wa-btn'+(r._rezolvat?' on':'')+'" data-wa-idx="'+i+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12.001 2.003C6.478 2.003 2 6.481 2 12.003c0 1.762.462 3.478 1.34 4.986L2 22.003l5.16-1.354a9.966 9.966 0 004.841 1.232h.004c5.523 0 10.001-4.478 10.001-10 0-5.523-4.478-10.001-10.005-9.878z"/></svg>Send WA</button></td>'+
+      '<td class="cp"><span class="rowlbl">Account</span>'+s(r.a)+'</td><td class="cp"><span class="rowlbl">Beneficiar</span>'+s(r.b)+'</td>'+
+      '<td class="cp"><span class="rowlbl">Localitate</span>'+s(r.l)+'</td><td class="cp"><span class="rowlbl">Tip</span><span class="badge">'+s(r.ty)+'</span></td>'+
+      '<td class="cp"><span class="rowlbl">Inițiere</span>'+fmtDate(r.d)+'</td><td class="cp"><span class="rowlbl">Programată</span>'+fmtDate(r.dp)+'</td>'+
+    '</tr>';
+  }
+  document.querySelector('#root tbody').innerHTML = rows || '<tr><td colspan="8" class="empty">Nu există tickete pentru filtrul selectat</td></tr>';
+  document.querySelectorAll('.tlink').forEach(function(el){ el.onclick=function(ev){ openPanel(parseInt(el.getAttribute('data-idx')), ev.clientX, ev.clientY); }; });
+  document.querySelectorAll('td.cp').forEach(function(el){ el.onclick=function(){ cp(el.textContent||el.innerText,el); }; });
+  document.querySelectorAll('.rezolvat-btn[data-idx]').forEach(function(btn){ btn.onclick=function(e){ e.stopPropagation(); openRezolvat(parseInt(btn.getAttribute('data-idx'))); }; });
+  var parts=[]; if(activeType) parts.push('Tip: '+activeType); if(activeLoc) parts.push('Localitate: '+activeLoc);
+  var fbar=document.getElementById('fbar'); fbar.className=parts.length?'fbar on':'fbar';
+  document.getElementById('fbar-text').textContent='🔍 '+parts.join(' | ')+' ('+src.length+' tickete)';
+}
+
+// Event delegation global: prinde click pe ORICE rezolvat-btn (portocaliu sau verde) si row-wa-btn
+document.addEventListener('click', function(e){
+  var btn = e.target.closest && e.target.closest('.rezolvat-btn[data-idx]');
+  if(btn){
+    e.stopPropagation();
+    e.preventDefault();
+    var idx = parseInt(btn.getAttribute('data-idx'));
+    if(!isNaN(idx)) openRezolvat(idx);
+    return;
+  }
+  var waBtn = e.target.closest && e.target.closest('.row-wa-btn[data-wa-idx]');
+  if(waBtn && waBtn.classList.contains('on')){
+    e.stopPropagation();
+    e.preventDefault();
+    var wIdx = parseInt(waBtn.getAttribute('data-wa-idx'));
+    if(!isNaN(wIdx)) sendWAFromRow(wIdx);
+  }
+});
+
+function sendWAFromRow(i){
+  var r = DATA[i];
+  if(!r || !r._rezolvat) return;
+  var waMsg = buildWAMessage(r);
+  var msg = encodeURIComponent(waMsg);
+  var phone = '40786590179';
+  var nativeUrl = 'whatsapp://send?phone='+phone+'&text='+msg;
+  var webUrl = 'https://wa.me/'+phone+'?text='+msg;
+  try {
+    window.location.href = nativeUrl;
+    setTimeout(function(){ window.open(webUrl, '_blank'); }, 800);
+  } catch(e){
+    window.open(webUrl, '_blank');
+  }
+}
+
+function render(data){
+  DATA=data;
+  if(!data||!data.length){ document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Nu există date</div>'; return; }
+  var acc={},loc={},cnt={};
+  data.forEach(function(r){ if(r.a)acc[r.a]=1; if(r.l)loc[r.l]=(loc[r.l]||0)+1; var t=r.ty||'?';cnt[t]=(cnt[t]||0)+1; });
+  var locs=Object.keys(loc).sort();
+  var locsHtml=locs.map(function(l){ return '<div class="card" data-loc="'+l+'"><div class="cv">'+loc[l]+'</div><div class="cl">'+l+'</div></div>'; }).join('');
+  var types=Object.keys(cnt).sort(function(a,b){ return cnt[b]-cnt[a]; });
+  var typesHtml=types.map(function(t){ return '<div class="card" data-type="'+t+'"><div class="cv">'+cnt[t]+'</div><div class="cl">'+t+'</div></div>'; }).join('');
+  var rows=data.map(function(r,i){ return '<tr><td><span class="tlink" data-idx="'+i+'">#'+s(r.t)+'</span></td><td><button class="rezolvat-btn" data-idx="'+i+'"><span class="rez-check"><span class="rez-check-mark">✓</span></span>Rezolvat</button><button class="row-wa-btn" data-wa-idx="'+i+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12.001 2.003C6.478 2.003 2 6.481 2 12.003c0 1.762.462 3.478 1.34 4.986L2 22.003l5.16-1.354a9.966 9.966 0 004.841 1.232h.004c5.523 0 10.001-4.478 10.001-10 0-5.523-4.478-10.001-10.005-9.878z"/></svg>Send WA</button></td><td class="cp"><span class="rowlbl">Account</span>'+s(r.a)+'</td><td class="cp"><span class="rowlbl">Beneficiar</span>'+s(r.b)+'</td><td class="cp"><span class="rowlbl">Localitate</span>'+s(r.l)+'</td><td class="cp"><span class="rowlbl">Tip</span><span class="badge">'+s(r.ty)+'</span></td><td class="cp"><span class="rowlbl">Inițiere</span>'+fmtDate(r.d)+'</td><td class="cp"><span class="rowlbl">Programată</span>'+fmtDate(r.dp)+'</td></tr>'; }).join('');
+  document.getElementById('root').innerHTML=
+    '<div class="grid3"><div class="sc"><div class="sv">'+data.length+'</div><div class="sl">Total Tickete</div></div><div class="sc"><div class="sv">'+Object.keys(acc).length+'</div><div class="sl">Conturi</div></div><div class="sc"><div class="sv">'+locs.length+'</div><div class="sl">Localități</div></div></div>'+
+    '<div class="progress-wrap" id="progressWrap"><div class="progress-header"><span class="progress-text" id="progressText">0 din '+data.length+' rezolvate</span><button class="progress-filter" id="progressFilter" data-active="false">Doar nerezolvate</button></div><div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div></div>'+
+    '<div class="search-sort-wrap">'+
+      '<div class="search-input-wrap"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" class="search-icon"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg><input type="text" id="searchInput" placeholder="Caută ticket, beneficiar, adresă..." autocomplete="off"><button id="searchClear" class="search-clear" style="display:none">✕</button></div>'+
+      '<select id="sortSelect" class="sort-select">'+
+        '<option value="default">Ordine originală</option>'+
+        '<option value="localitate">Grupare pe localitate</option>'+
+        '<option value="tip">Grupare pe tip</option>'+
+        '<option value="data">Data programată</option>'+
+        '<option value="status">Nerezolvate primele</option>'+
+      '</select>'+
+    '</div>'+
+    '<div style="margin-bottom:28px"><button onclick="openMap()" class="map-btn"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s-8-4.5-8-11.8A8 8 0 0 1 12 2a8 8 0 0 1 8 8.2c0 7.3-8 11.8-8 11.8z"/><circle cx="12" cy="10" r="3"/></svg>Vezi pe hartă</button></div>'+
+    '<div class="sec"><div class="sec-title">Localități</div><div class="cards" id="locGrid">'+locsHtml+'</div></div>'+
+    '<div class="sec"><div class="sec-title">Tipuri intervenție</div><div class="cards" id="typeGrid">'+typesHtml+'</div></div>'+
+    '<div class="fbar" id="fbar"><span id="fbar-text"></span><button onclick="clearFilters()">✕ Elimină filtru</button></div>'+
+    '<div class="tw"><div><table><thead><tr><th>Ticket</th><th>Status</th><th>Account</th><th>Beneficiar</th><th>Localitate</th><th>Tip</th><th>Inițiere</th><th>Programată</th></tr></thead><tbody>'+rows+'</tbody></table></div></div>';
+  document.querySelectorAll('#locGrid .card').forEach(function(el){ el.onclick=function(){ toggleLoc(el.getAttribute('data-loc')); }; });
+  document.querySelectorAll('#typeGrid .card').forEach(function(el){ el.onclick=function(){ toggleType(el.getAttribute('data-type')); }; });
+  document.querySelectorAll('.tlink').forEach(function(el){ el.onclick=function(ev){ openPanel(parseInt(el.getAttribute('data-idx')), ev.clientX, ev.clientY); }; });
+  document.querySelectorAll('td.cp').forEach(function(el){ el.onclick=function(){ cp(el.textContent||el.innerText,el); }; });
+  document.querySelectorAll('.rezolvat-btn[data-idx]').forEach(function(btn){ btn.onclick=function(e){ e.stopPropagation(); openRezolvat(parseInt(btn.getAttribute('data-idx'))); }; });
+  // Filtru "doar nerezolvate"
+  var progFilter = document.getElementById('progressFilter');
+  if(progFilter) progFilter.onclick = function(){
+    var active = this.getAttribute('data-active') === 'true';
+    this.setAttribute('data-active', active ? 'false' : 'true');
+    if(active) this.classList.remove('on'); else this.classList.add('on');
+    updateTable();
+  };
+  // Search
+  var si = document.getElementById('searchInput');
+  var sc = document.getElementById('searchClear');
+  if(si){
+    si.oninput = function(){
+      sc.style.display = si.value ? 'flex' : 'none';
+      updateTable();
+    };
+  }
+  if(sc){
+    sc.onclick = function(){ si.value=''; sc.style.display='none'; updateTable(); si.focus(); };
+  }
+  // Sort
+  var ss = document.getElementById('sortSelect');
+  if(ss){
+    ss.onchange = function(){ SORT_MODE = ss.value; updateTable(); };
+  }
+  updateProgress();
+}
+
+// ── MAP FUNCTIONS ─────────────────────────────────────────
+var leafletMap = null;
+var mapMarkers = [];
+var routeLine = null;
+var routeActive = false;
+var markerCoords = [];
+var geocodeCache = {};
+var COLORS = ['#e74c3c','#e67e22','#f39c12','#2ecc71','#3498db','#9b59b6','#1abc9c','#e91e63'];
+
+function openMap(){
+  if(!DATA.length){ alert('Nu există date de afișat'); return; }
+  var src = filtered();
+  if(!src.length) src = DATA;
+  document.getElementById('map-count').textContent = src.length + ' tickete';
+  document.getElementById('mapModal').className = 'modal-bg on';
+  document.getElementById('map-loading').style.display = 'block';
+  document.getElementById('map-loading-text').textContent = 'Se încarcă harta...';
+
+  // Incarca Leaflet lazy daca nu e deja incarcat
+  if(typeof L === 'undefined'){
+    var lscript = document.createElement('script');
+    lscript.src = 'https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js';
+    lscript.onload = function(){ drawMap(src); };
+    lscript.onerror = function(){ document.getElementById('map-loading-text').textContent = 'Eroare: nu s-a putut încărca harta.'; };
+    document.head.appendChild(lscript);
+  } else {
+    drawMap(src);
+  }
+}
+
+function drawMap(src){
+  setTimeout(function(){
+    try {
+      initLeafletMap();
+      geocodeAll(src);
+      setTimeout(function(){ if(leafletMap) leafletMap.invalidateSize(); }, 300);
+    } catch(e){
+      document.getElementById('map-loading-text').textContent = 'Eroare: ' + e.message;
+    }
+  }, 200);
+}
+
+function initLeafletMap(){
+  if(leafletMap){ leafletMap.remove(); leafletMap=null; }
+  mapMarkers = [];
+  markerCoords = [];
+  if(routeLine){ leafletMap.removeLayer(routeLine); routeLine=null; }
+  routeActive = false;
+  var btn=document.getElementById('mapOptimizeBtn'); if(btn) btn.textContent='🧭 Optimizează traseu';
+  document.getElementById('leaflet-map').innerHTML = '';
+  leafletMap = L.map('leaflet-map',{zoomControl:true}).setView([45.3,21.9],9);
+  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+    attribution:'© OpenStreetMap contributors', maxZoom:19
+  }).addTo(leafletMap);
+}
+
+var LOC_COORDS = {
+  'RESITA': [45.2969, 21.8897],
+  'CARANSEBES': [45.4192, 22.2208],
+  'BOCSA': [45.3736, 21.7411],
+  'ORAVITA': [45.0361, 21.6892],
+  'BAILE HERCULANE': [44.8797, 22.4142],
+  'MOLDOVA NOUA': [44.7364, 21.6669],
+  'OTELU ROSU': [45.5311, 22.3564],
+  'ANINA': [45.0783, 21.8556],
+  'TICVANIU MARE': [45.1500, 21.6167],
+  'BOZOVICI': [44.9333, 22.0006],
+  'RECAS': [45.8000, 21.5000],
+  'ARAD': [46.1866, 21.3123],
+  'TIMISOARA': [45.7489, 21.2087],
+  'LUGOJ': [45.6886, 21.9031]
+};
+
+function getLocalityCoords(loc){
+  var key = (loc||'').toUpperCase().trim();
+  return LOC_COORDS[key] || null;
+}
+
+function geocodeAll(src){
+  var bounds = [];
+  var listHtml = '';
+  var locOffsets = {};
+
+  for(var i=0; i<src.length; i++){
+    var r = src[i];
+    var color = COLORS[i % COLORS.length];
+    var addr = s(r.ad)+', '+s(r.l)+', Romania';
+    var gmUrl = 'https://www.google.com/maps/search/'+encodeURIComponent(addr);
+    var wazeUrl = 'https://waze.com/ul?q='+encodeURIComponent(addr);
+
+    listHtml += '<div class="map-list-item" data-idx="'+i+'" style="display:flex;align-items:stretch;gap:12px;padding:14px 18px;border-bottom:1px solid var(--br);font-size:15px;cursor:pointer">'+
+      '<span style="background:'+color+';color:#fff;border-radius:50%;width:36px;height:36px;min-width:36px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;align-self:flex-start;flex-shrink:0">'+(i+1)+'</span>'+
+      '<div style="flex:1;min-width:0;display:flex;flex-direction:column;justify-content:center">'+
+        '<div style="font-weight:700;color:var(--tx);font-size:16px;letter-spacing:-.2px;line-height:1.3;word-break:break-word">'+s(r.ob||r.b)+'</div>'+
+        '<div style="color:var(--t2);font-size:14px;margin-top:4px;line-height:1.35;word-break:break-word">'+s(r.ad)+', '+s(r.l)+'</div>'+
+      '</div>'+
+      '<div style="display:flex;flex-direction:column;gap:6px;flex-shrink:0;align-items:stretch;justify-content:center">'+
+        '<a href="'+gmUrl+'" target="_blank" onclick="event.stopPropagation()" style="background:#4285f4;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;text-decoration:none;text-align:center;min-width:70px">Maps</a>'+
+        '<a href="'+wazeUrl+'" target="_blank" onclick="event.stopPropagation()" style="background:#33ccff;color:#fff;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:700;text-decoration:none;text-align:center;min-width:70px">Waze</a>'+
+      '</div>'+
+    '</div>';
+
+    var baseCoords = getLocalityCoords(s(r.l));
+    if(baseCoords){
+      var locKey = s(r.l).toUpperCase();
+      if(!locOffsets[locKey]) locOffsets[locKey] = 0;
+      var offset = locOffsets[locKey];
+      locOffsets[locKey]++;
+      var angle = offset * 0.7;
+      var radius = 0.003 * offset;
+      var coords = {
+        lat: baseCoords[0] + radius * Math.cos(angle),
+        lng: baseCoords[1] + radius * Math.sin(angle)
+      };
+      addMarker(i, r, coords, color, bounds);
+    }
+  }
+
+  document.getElementById('map-loading').style.display='none';
+  document.getElementById('map-list').innerHTML = listHtml;
+  if(bounds.length>0) leafletMap.fitBounds(bounds,{padding:[40,40]});
+
+  document.querySelectorAll('.map-list-item').forEach(function(el){
+    el.addEventListener('click',function(){
+      var idx=parseInt(el.getAttribute('data-idx'));
+      if(mapMarkers[idx]){ leafletMap.setView(mapMarkers[idx].getLatLng(),15); mapMarkers[idx].openPopup(); }
+    });
+  });
+}
+
+function addMarker(i,r,coords,color,bounds){
+  bounds.push([coords.lat,coords.lng]);
+  markerCoords[i] = {lat:coords.lat, lng:coords.lng};
+  var icon=L.divIcon({
+    className:'',
+    html:'<div style="background:'+color+';color:#fff;border-radius:50%;width:28px;height:28px;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;border:2px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,.3)">'+(i+1)+'</div>',
+    iconSize:[28,28],iconAnchor:[14,14],popupAnchor:[0,-14]
+  });
+  var addr=s(r.ad)+', '+s(r.l)+', Romania';
+  var popup='<div style="font-size:12px;min-width:200px">'+
+    '<div style="font-weight:700;margin-bottom:4px">'+s(r.t)+'</div>'+
+    '<div style="margin-bottom:2px"><b>'+s(r.b)+'</b></div>'+
+    '<div style="color:#666;margin-bottom:4px">'+s(r.ad)+', '+s(r.l)+'</div>'+
+    '<div style="margin-bottom:6px"><span style="background:#e8f0fe;color:#4285f4;border-radius:3px;padding:2px 6px">'+s(r.ty)+'</span></div>'+
+    '<div style="display:flex;gap:6px">'+
+      '<a href="https://www.google.com/maps/search/'+encodeURIComponent(addr)+'" target="_blank" style="background:#4285f4;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">Maps</a>'+
+      '<a href="https://waze.com/ul?q='+encodeURIComponent(addr)+'" target="_blank" style="background:#33ccff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">Waze</a>'+
+    '</div>'+
+  '</div>';
+  var marker=L.marker([coords.lat,coords.lng],{icon:icon}).addTo(leafletMap).bindPopup(popup);
+  mapMarkers[i]=marker;
+}
+
+// Distanta haversine intre 2 puncte lat/lng
+function distKm(a, b){
+  var R = 6371;
+  var toRad = function(x){ return x * Math.PI / 180; };
+  var dLat = toRad(b.lat - a.lat);
+  var dLng = toRad(b.lng - a.lng);
+  var s1 = Math.sin(dLat/2)*Math.sin(dLat/2) +
+           Math.cos(toRad(a.lat))*Math.cos(toRad(b.lat)) *
+           Math.sin(dLng/2)*Math.sin(dLng/2);
+  return R * 2 * Math.atan2(Math.sqrt(s1), Math.sqrt(1-s1));
+}
+
+// Nearest neighbor TSP (greedy, aproximativ)
+function computeOptimalRoute(){
+  var points = [];
+  for(var i=0;i<markerCoords.length;i++){
+    if(markerCoords[i]) points.push({idx:i, coords:markerCoords[i]});
+  }
+  if(points.length < 2) return [];
+  var visited = {};
+  var route = [points[0]];
+  visited[points[0].idx] = true;
+  var current = points[0];
+  while(Object.keys(visited).length < points.length){
+    var minDist = Infinity;
+    var next = null;
+    for(var j=0;j<points.length;j++){
+      if(visited[points[j].idx]) continue;
+      var d = distKm(current.coords, points[j].coords);
+      if(d < minDist){ minDist = d; next = points[j]; }
+    }
+    if(!next) break;
+    route.push(next);
+    visited[next.idx] = true;
+    current = next;
+  }
+  return route;
+}
+
+function toggleRoute(){
+  if(!leafletMap) return;
+  var btn = document.getElementById('mapOptimizeBtn');
+  if(routeActive){
+    if(routeLine){ leafletMap.removeLayer(routeLine); routeLine = null; }
+    routeActive = false;
+    if(btn) btn.textContent = '🧭 Optimizează traseu';
+    return;
+  }
+  var route = computeOptimalRoute();
+  if(route.length < 2){ alert('Ai nevoie de cel puțin 2 tickete cu coordonate pentru traseu'); return; }
+  var totalKm = 0;
+  var latlngs = [];
+  for(var i=0;i<route.length;i++){
+    latlngs.push([route[i].coords.lat, route[i].coords.lng]);
+    if(i>0) totalKm += distKm(route[i-1].coords, route[i].coords);
+  }
+  routeLine = L.polyline(latlngs, {
+    color: '#0369A1',
+    weight: 4,
+    opacity: 0.75,
+    dashArray: '8, 8'
+  }).addTo(leafletMap);
+  routeActive = true;
+  if(btn) btn.textContent = '✕ Ascunde traseu ('+totalKm.toFixed(1)+' km)';
+  leafletMap.fitBounds(routeLine.getBounds(), {padding:[50,50]});
+}
+
+function closeMap(){
+  document.getElementById('mapModal').className='modal-bg';
+  if(leafletMap){leafletMap.remove();leafletMap=null;}
+  mapMarkers=[];
+  document.getElementById('map-loading').style.display='block';
+  document.getElementById('map-loading-text').textContent='Se încarcă harta...';
+  document.getElementById('map-list').innerHTML='';
+  document.getElementById('leaflet-map').innerHTML='';
+}
+
+var mmEl = document.getElementById('mapModal'); if(mmEl) mmEl.onclick=function(e){if(e.target===this)closeMap();};
+
+// Citire date: 1) ?v=code din Firebase 2) #d=base64 fallback 3) ?id= JSONP GAS legacy
+function load(){
+  var params = new URLSearchParams(window.location.search);
+  var vCode = params.get('v');
+  var id = params.get('id');
+  var hash = window.location.hash;
+
+  // Varianta 1: cod scurt Firebase ?v=cs09xxx
+  if(vCode){
+    SHARE_CODE = vCode;
+    var fbUrl = FIREBASE_URL + '/t/' + encodeURIComponent(vCode) + '.json';
+    var xhr = new XMLHttpRequest();
+    xhr.open('GET', fbUrl, true);
+    xhr.timeout = 15000;
+    xhr.onload = function(){
+      if(xhr.status >= 200 && xhr.status < 300){
+        try {
+          var res = JSON.parse(xhr.responseText);
+          if(res && res.data && Array.isArray(res.data) && res.data.length > 0){
+            // Afiseaza data livrarii daca exista
+            if(res.ts){
+              var sub = document.getElementById('subtitle');
+              if(sub) sub.innerHTML = 'Raport intervenții teren · <span style="color:var(--pr);font-weight:600">Livrat '+fmtDate(res.ts)+'</span>';
+            }
+            // Aplica statusurile rezolvate persistate
+            if(res.resolved && typeof res.resolved === 'object'){
+              for(var k=0;k<res.data.length;k++){
+                var tn = s(res.data[k].t);
+                if(res.resolved[tn]) res.data[k]._rezolvat = true;
+              }
+            }
+            render(res.data);
+            return;
+          }
+          document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Linkul a expirat sau nu conține date.</div>';
+        } catch(e){
+          document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Eroare date: '+e.message+'</div>';
+        }
+      } else {
+        document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Firebase HTTP '+xhr.status+'</div>';
+      }
+    };
+    xhr.ontimeout = function(){
+      document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">⏱️ Timeout Firebase.<br><br><button onclick="location.reload()" style="padding:8px 16px;background:#4a90e2;color:#fff;border:none;border-radius:6px;cursor:pointer">🔄 Reîncearcă</button></div>';
+    };
+    xhr.onerror = function(){
+      document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Nu s-a putut conecta la Firebase</div>';
+    };
+    xhr.send();
+    return;
+  }
+
+  // Varianta 2: datele in fragment #d=base64 (link lung, fara server)
+  if(hash && hash.indexOf('#d=') === 0){
+    try {
+      var b64 = hash.substring(3);
+      var jsonStr = decodeURIComponent(escape(atob(b64)));
+      var data = JSON.parse(jsonStr);
+      if(Array.isArray(data) && data.length > 0){
+        render(data);
+        return;
+      }
+    } catch(e){
+      document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date invalide în link: '+e.message+'</div>';
+      return;
+    }
+  }
+
+  // Varianta 3: fallback JSONP la GAS (legacy)
+  if(!id){
+    document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Link invalid</div>';
+    return;
+  }
+
+  var ua = navigator.userAgent;
+  var isEdge = /EdgA\//i.test(ua);
+  if(isEdge){
+    document.getElementById('root').innerHTML =
+      '<div class="msg" style="color:#f44336;padding:30px">' +
+        '<div style="font-size:48px;margin-bottom:16px">⚠️</div>' +
+        '<div style="font-size:16px;margin-bottom:12px"><b>Edge nu poate încărca datele pe Android</b></div>' +
+        '<div style="font-size:14px;color:var(--t2);margin-bottom:20px">Deschide acest link în <b>Chrome</b>.</div>' +
+        '<button onclick="copyCurrentUrl()" style="padding:10px 20px;background:#4a90e2;color:#fff;border:none;border-radius:6px;cursor:pointer;font-size:14px">📋 Copiază linkul</button>' +
+      '</div>';
+    return;
+  }
+
+  var cbName = 'gasCb' + Math.floor(Math.random()*1000000);
+  var url = SCRIPT_URL + '?id=' + encodeURIComponent(id) + '&callback=' + cbName;
+  var handled = false;
+
+  var timer = setTimeout(function(){
+    if(handled) return;
+    handled = true;
+    try{ delete window[cbName]; }catch(e){}
+    document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">⏱️ Timeout. Roagă expeditorul să trimită linkul cu date incluse.<br><br><button onclick="location.reload()" style="padding:8px 16px;background:#4a90e2;color:#fff;border:none;border-radius:6px;cursor:pointer">🔄 Reîncearcă</button></div>';
+  }, 20000);
+
+  window[cbName] = function(data){
+    if(handled) return;
+    handled = true;
+    clearTimeout(timer);
+    try{ delete window[cbName]; }catch(e){}
+    if(data && data.error){ document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date negăsite.</div>'; return; }
+    if(Array.isArray(data) && data.length > 0){ render(data); return; }
+    document.getElementById('root').innerHTML='<div class="msg" style="color:#f44336">❌ Date invalide.</div>';
+  };
+
+  var sc = document.createElement('script');
+  sc.src = url;
+  document.body.appendChild(sc);
+}
+
+function copyCurrentUrl(){
+  var url = window.location.href;
+  if(navigator.clipboard) navigator.clipboard.writeText(url).then(function(){ alert('Link copiat! Deschide-l în Chrome.'); });
+  else {
+    var t = document.createElement('textarea'); t.value=url; document.body.appendChild(t); t.select(); document.execCommand('copy'); document.body.removeChild(t);
+    alert('Link copiat!');
+  }
+}
+
+// ============================================================
+// SCANNER + UPLOAD DOCUMENTE
+// ============================================================
+var CV_LOADED = false;
+var CV_LOADING = false;
+var JSPDF_LOADED = false;
+var scanStream = null;
+var scanPages = []; // { canvas, dataUrl }
+var currentScanTicket = null;
+
+function loadOpenCV(){
+  return new Promise(function(resolve, reject){
+    if(CV_LOADED){ resolve(); return; }
+    if(CV_LOADING){
+      var check = setInterval(function(){ if(CV_LOADED){ clearInterval(check); resolve(); } },200);
+      return;
+    }
+    CV_LOADING = true;
+    var loadingText = document.getElementById('scan-loading-text');
+
+    // Load jscanify first
+    function loadJscanify(cb){
+      if(window.jscanify){ cb(); return; }
+      var s = document.createElement('script');
+      s.src = 'https://cdn.jsdelivr.net/gh/puffinsoft/jscanify@master/src/jscanify.min.js';
+      s.onload = cb;
+      s.onerror = function(){ reject('Nu s-a putut încărca jscanify'); };
+      document.head.appendChild(s);
+    }
+
+    // Load OpenCV with fallback URLs
+    function loadCV(urls, cb){
+      if(urls.length === 0){ reject('Nu s-a putut încărca OpenCV de la niciun CDN'); return; }
+      var url = urls.shift();
+      if(loadingText) loadingText.textContent = 'Se încarcă motorul scanner (~8MB)...';
+      var s = document.createElement('script');
+      s.async = true;
+      s.src = url;
+      var done = false;
+      s.onload = function(){
+        // Wait up to 20s for cv.Mat to be defined
+        var attempts = 0;
+        var wait = setInterval(function(){
+          attempts++;
+          if(window.cv && window.cv.Mat){
+            clearInterval(wait);
+            done = true;
+            CV_LOADED = true;
+            cb();
+          } else if(attempts > 200){ // 20s
+            clearInterval(wait);
+            if(!done) loadCV(urls, cb);
+          } else if(loadingText && attempts % 10 === 0){
+            loadingText.textContent = 'Se încarcă motorul scanner... ('+attempts/10+'s)';
+          }
+        }, 100);
+      };
+      s.onerror = function(){
+        if(!done) loadCV(urls, cb);
+      };
+      document.head.appendChild(s);
+    }
+
+    loadJscanify(function(){
+      loadCV([
+        'https://docs.opencv.org/4.7.0/opencv.js',
+        'https://docs.opencv.org/4.8.0/opencv.js',
+        'https://cdn.jsdelivr.net/npm/@techstark/opencv-js@4.10.0-release.1/dist/opencv.js'
+      ], resolve);
+    });
+  });
+}
+
+function loadJsPDF(){
+  return new Promise(function(resolve, reject){
+    if(JSPDF_LOADED){ resolve(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+    s.onload = function(){ JSPDF_LOADED = true; resolve(); };
+    s.onerror = function(){ reject('jsPDF load failed'); };
+    document.head.appendChild(s);
+  });
+}
+
+function openScanner(){
+  if(CURRENT_PANEL_IDX < 0) return;
+  currentScanTicket = DATA[CURRENT_PANEL_IDX];
+  scanPages = [];
+  updateScanPagesBtn();
+
+  var modal = document.getElementById('scan-modal');
+  var loading = document.getElementById('scan-loading');
+  var preview = document.getElementById('scan-preview-wrap');
+  var doneBar = document.getElementById('scan-done-bar');
+
+  modal.classList.add('on');
+  loading.classList.add('on');
+  preview.classList.remove('on');
+  doneBar.classList.remove('on');
+  document.getElementById('scan-retake').style.display='none';
+  document.getElementById('scan-accept').style.display='none';
+  document.getElementById('scan-capture').style.display='flex';
+
+  loadOpenCV().then(function(){
+    return startCamera();
+  }).then(function(){
+    loading.classList.remove('on');
+    startEdgeDetection();
+  }).catch(function(err){
+    loading.classList.remove('on');
+    alert('Eroare pornire scanner: '+err);
+    closeScanner();
+  });
+}
+
+function startCamera(){
+  return new Promise(function(resolve, reject){
+    navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: 'environment',
+        width: { ideal: 3840 },
+        height: { ideal: 2160 }
+      },
+      audio: false
+    }).then(function(stream){
+      scanStream = stream;
+      var video = document.getElementById('scan-video');
+      video.srcObject = stream;
+      video.onloadedmetadata = function(){
+        video.play();
+        resolve();
+      };
+    }).catch(function(err){
+      reject('Camera: '+err.message);
+    });
+  });
+}
+
+var edgeDetectionRAF = null;
+function startEdgeDetection(){
+  var video = document.getElementById('scan-video');
+  var overlay = document.getElementById('scan-overlay');
+  var ctx = overlay.getContext('2d');
+  var scanner = new jscanify();
+
+  function draw(){
+    if(!video.videoWidth){ edgeDetectionRAF = requestAnimationFrame(draw); return; }
+    // Match overlay to video display size
+    var rect = video.getBoundingClientRect();
+    overlay.width = rect.width;
+    overlay.height = rect.height;
+    overlay.style.width = rect.width + 'px';
+    overlay.style.height = rect.height + 'px';
+
+    // Get highlight canvas from jscanify
+    try {
+      var highlighted = scanner.highlightPaper(video);
+      // Draw scaled version
+      ctx.clearRect(0,0,overlay.width,overlay.height);
+      ctx.drawImage(highlighted, 0, 0, overlay.width, overlay.height);
+    } catch(e){}
+    edgeDetectionRAF = requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+function capturePage(){
+  var video = document.getElementById('scan-video');
+  if(!video.videoWidth) return;
+
+  // Capture full resolution frame
+  var canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  var ctx = canvas.getContext('2d');
+  ctx.drawImage(video, 0, 0);
+
+  // Extract paper via jscanify (perspective correction + crop)
+  try {
+    var scanner = new jscanify();
+    // A4 at 300 DPI: 2480 x 3508
+    var extracted = scanner.extractPaper(canvas, 2480, 3508);
+
+    // Show preview
+    var previewCanvas = document.getElementById('scan-preview');
+    previewCanvas.width = extracted.width;
+    previewCanvas.height = extracted.height;
+    previewCanvas.getContext('2d').drawImage(extracted, 0, 0);
+    // Store for accept
+    window.__pendingScan = extracted;
+  } catch(e){
+    // Fallback: use raw capture without perspective correction
+    var previewCanvas = document.getElementById('scan-preview');
+    previewCanvas.width = canvas.width;
+    previewCanvas.height = canvas.height;
+    previewCanvas.getContext('2d').drawImage(canvas, 0, 0);
+    window.__pendingScan = canvas;
+  }
+
+  // Show preview mode
+  document.getElementById('scan-preview-wrap').classList.add('on');
+  document.getElementById('scan-capture').style.display='none';
+  document.getElementById('scan-retake').style.display='inline-block';
+  document.getElementById('scan-accept').style.display='inline-block';
+}
+
+function retakePage(){
+  window.__pendingScan = null;
+  document.getElementById('scan-preview-wrap').classList.remove('on');
+  document.getElementById('scan-capture').style.display='flex';
+  document.getElementById('scan-retake').style.display='none';
+  document.getElementById('scan-accept').style.display='none';
+}
+
+function acceptPage(){
+  if(!window.__pendingScan) return;
+  var canvas = window.__pendingScan;
+  scanPages.push({ canvas: canvas, dataUrl: canvas.toDataURL('image/jpeg', 0.92) });
+  window.__pendingScan = null;
+  updateScanPagesBtn();
+  retakePage();
+  // Show done bar if at least 1 page
+  document.getElementById('scan-done-bar').classList.add('on');
+}
+
+function updateScanPagesBtn(){
+  var btn = document.getElementById('scan-pages-btn');
+  btn.textContent = scanPages.length + ' pag';
+  btn.style.background = scanPages.length > 0 ? 'var(--em)' : 'var(--tx)';
+}
+
+function closeScanner(){
+  if(edgeDetectionRAF){ cancelAnimationFrame(edgeDetectionRAF); edgeDetectionRAF=null; }
+  if(scanStream){
+    scanStream.getTracks().forEach(function(t){ t.stop(); });
+    scanStream = null;
+  }
+  document.getElementById('scan-modal').classList.remove('on');
+  scanPages = [];
+  window.__pendingScan = null;
+}
+
+// ============================================================
+// UPLOAD la Cloudinary
+// ============================================================
+function uploadToCloudinary(blob, filename){
+  return new Promise(function(resolve, reject){
+    var formData = new FormData();
+    formData.append('file', blob, filename);
+    formData.append('upload_preset', CLOUDINARY_PRESET);
+    formData.append('folder', 'tickete/'+SHARE_CODE);
+    var xhr = new XMLHttpRequest();
+    xhr.open('POST', 'https://api.cloudinary.com/v1_1/'+CLOUDINARY_CLOUD+'/auto/upload', true);
+    xhr.onload = function(){
+      if(xhr.status >= 200 && xhr.status < 300){
+        try {
+          var res = JSON.parse(xhr.responseText);
+          resolve(res);
+        } catch(e){ reject(e); }
+      } else {
+        reject('Cloudinary '+xhr.status+': '+xhr.responseText);
+      }
+    };
+    xhr.onerror = function(){ reject('Network error'); };
+    xhr.send(formData);
+  });
+}
+
+function saveDocRef(ticketNumber, doc){
+  if(!SHARE_CODE) return;
+  var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/docs/' + encodeURIComponent(ticketNumber) + '.json';
+  // GET current list, append, PUT
+  var xhr1 = new XMLHttpRequest();
+  xhr1.open('GET', url, true);
+  xhr1.onload = function(){
+    var list = [];
+    try { var r = JSON.parse(xhr1.responseText); if(Array.isArray(r)) list = r; } catch(e){}
+    list.push(doc);
+    var xhr2 = new XMLHttpRequest();
+    xhr2.open('PUT', url, true);
+    xhr2.setRequestHeader('Content-Type', 'application/json');
+    xhr2.onload = function(){
+      // Refresh docs display
+      renderPanelDocs(ticketNumber);
+    };
+    xhr2.send(JSON.stringify(list));
+  };
+  xhr1.send();
+}
+
+function finishScan(format){
+  if(scanPages.length === 0){ alert('Nu ai capturat nicio pagină'); return; }
+  var t = s(currentScanTicket.t);
+  var timestamp = new Date();
+  var ts = timestamp.getFullYear() + ('0'+(timestamp.getMonth()+1)).slice(-2) + ('0'+timestamp.getDate()).slice(-2) + '_' + ('0'+timestamp.getHours()).slice(-2) + ('0'+timestamp.getMinutes()).slice(-2);
+  var baseName = 'PV_' + t + '_' + ts;
+
+  // Show upload progress
+  var loading = document.getElementById('scan-loading');
+  loading.classList.add('on');
+  document.getElementById('scan-loading-text').textContent = 'Se salvează...';
+
+  var uploads = [];
+  if(format === 'pdf'){
+    // Create PDF
+    loadJsPDF().then(function(){
+      var jsPDF = window.jspdf.jsPDF;
+      var pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      for(var i=0;i<scanPages.length;i++){
+        if(i>0) pdf.addPage();
+        // A4 = 210mm x 297mm
+        pdf.addImage(scanPages[i].dataUrl, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+      }
+      var blob = pdf.output('blob');
+      var filename = baseName + '.pdf';
+      uploadToCloudinary(blob, filename).then(function(res){
+        saveDocRef(t, {
+          url: res.secure_url,
+          public_id: res.public_id,
+          name: filename,
+          size: blob.size,
+          type: 'pdf',
+          pages: scanPages.length,
+          uploaded_at: Date.now()
+        });
+        loading.classList.remove('on');
+        closeScanner();
+      }).catch(function(err){
+        loading.classList.remove('on');
+        alert('Eroare upload: '+err);
+      });
+    });
+  } else {
+    // JPEG - upload each page separately
+    var uploadNext = function(i){
+      if(i >= scanPages.length){
+        loading.classList.remove('on');
+        closeScanner();
+        return;
+      }
+      var pageName = baseName + (scanPages.length > 1 ? '_p'+(i+1) : '') + '.jpg';
+      // Convert dataUrl to blob
+      var dataUrl = scanPages[i].dataUrl;
+      fetch(dataUrl).then(function(r){ return r.blob(); }).then(function(blob){
+        return uploadToCloudinary(blob, pageName);
+      }).then(function(res){
+        saveDocRef(t, {
+          url: res.secure_url,
+          public_id: res.public_id,
+          name: pageName,
+          size: res.bytes,
+          type: 'jpg',
+          uploaded_at: Date.now()
+        });
+        uploadNext(i+1);
+      }).catch(function(err){
+        loading.classList.remove('on');
+        alert('Eroare upload pag '+(i+1)+': '+err);
+      });
+    };
+    uploadNext(0);
+  }
+}
+
+// Afiseaza documentele salvate in modal
+function renderPanelDocs(ticketNumber){
+  if(!SHARE_CODE) return;
+  var container = document.getElementById('pan-docs');
+  var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/docs/' + encodeURIComponent(ticketNumber) + '.json';
+  var xhr = new XMLHttpRequest();
+  xhr.open('GET', url, true);
+  xhr.onload = function(){
+    var docs = [];
+    try { var r = JSON.parse(xhr.responseText); if(Array.isArray(r)) docs = r; } catch(e){}
+    if(docs.length === 0){ container.innerHTML = ''; return; }
+    var html = '';
+    for(var i=0;i<docs.length;i++){
+      var d = docs[i];
+      var isPdf = d.type === 'pdf' || (d.name||'').toLowerCase().endsWith('.pdf');
+      var thumbHtml;
+      if(isPdf){
+        thumbHtml = '<div class="pan-doc-pdf"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg><div class="pan-doc-pdf-label">PDF · '+(d.pages||1)+' pag</div></div>';
+      } else {
+        // Cloudinary thumbnail transform: w_300,h_400,c_fill
+        var thumbUrl = d.url.replace('/upload/', '/upload/w_300,h_400,c_fill,q_auto/');
+        thumbHtml = '<img class="pan-doc-thumb" src="'+thumbUrl+'" alt="'+d.name+'">';
+      }
+      html += '<div class="pan-doc-item" data-doc-idx="'+i+'" data-ticket="'+ticketNumber+'">'+
+        thumbHtml+
+        '<div class="pan-doc-name">'+d.name+'</div>'+
+        '<button class="pan-doc-delete" data-doc-idx="'+i+'" data-ticket="'+ticketNumber+'" title="Șterge">✕</button>'+
+      '</div>';
+    }
+    container.innerHTML = html;
+    // Wire clicks
+    container.querySelectorAll('.pan-doc-item').forEach(function(el){
+      el.onclick = function(e){
+        if(e.target.classList.contains('pan-doc-delete')){
+          if(!confirm('Ștergi acest document?')) return;
+          var idx = parseInt(e.target.getAttribute('data-doc-idx'));
+          var tn = e.target.getAttribute('data-ticket');
+          deleteDoc(tn, idx);
+          return;
+        }
+        var idx = parseInt(el.getAttribute('data-doc-idx'));
+        openDocViewer(docs[idx]);
+      };
+    });
+  };
+  xhr.send();
+}
+
+function deleteDoc(ticketNumber, idx){
+  var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/docs/' + encodeURIComponent(ticketNumber) + '.json';
+  var xhr1 = new XMLHttpRequest();
+  xhr1.open('GET', url, true);
+  xhr1.onload = function(){
+    var list = [];
+    try { var r = JSON.parse(xhr1.responseText); if(Array.isArray(r)) list = r; } catch(e){}
+    list.splice(idx, 1);
+    var xhr2 = new XMLHttpRequest();
+    xhr2.open('PUT', url, true);
+    xhr2.setRequestHeader('Content-Type', 'application/json');
+    xhr2.onload = function(){ renderPanelDocs(ticketNumber); };
+    xhr2.send(JSON.stringify(list));
+  };
+  xhr1.send();
+}
+
+function openDocViewer(doc){
+  var v = document.getElementById('doc-viewer');
+  var body = document.getElementById('doc-viewer-body');
+  document.getElementById('doc-viewer-name').textContent = doc.name;
+  var dl = document.getElementById('doc-viewer-download');
+  dl.href = doc.url;
+  dl.setAttribute('download', doc.name);
+  var isPdf = doc.type === 'pdf' || (doc.name||'').toLowerCase().endsWith('.pdf');
+  if(isPdf){
+    body.innerHTML = '<iframe src="'+doc.url+'#toolbar=0"></iframe>';
+  } else {
+    body.innerHTML = '<img src="'+doc.url+'" alt="'+doc.name+'">';
+  }
+  v.classList.add('on');
+}
+
+function closeDocViewer(){
+  document.getElementById('doc-viewer').classList.remove('on');
+  document.getElementById('doc-viewer-body').innerHTML = '';
+}
+
+// Wire scanner buttons
+document.getElementById('pan-scan').onclick = openScanner;
+document.getElementById('scan-close').onclick = closeScanner;
+document.getElementById('scan-capture').onclick = capturePage;
+document.getElementById('scan-retake').onclick = retakePage;
+document.getElementById('scan-accept').onclick = acceptPage;
+document.getElementById('scan-finish-pdf').onclick = function(){ finishScan('pdf'); };
+document.getElementById('scan-finish-jpg').onclick = function(){ finishScan('jpg'); };
+document.getElementById('doc-viewer-close').onclick = closeDocViewer;
+
+load();
+</script>
+</body>
+</html>
