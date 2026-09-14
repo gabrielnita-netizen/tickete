@@ -571,17 +571,10 @@ if(panWaEl) panWaEl.onclick = function(){
   if(CURRENT_PANEL_IDX < 0) return;
   var r = DATA[CURRENT_PANEL_IDX];
   if(!r || !r._rezolvat) return;
-  var waMsg = buildWAMessage(r);
-  var msg = encodeURIComponent(waMsg);
-  var phone = '40786590179';
-  var nativeUrl = 'whatsapp://send?phone='+phone+'&text='+msg;
-  var webUrl = 'https://wa.me/'+phone+'?text='+msg;
-  try {
-    window.location.href = nativeUrl;
-    setTimeout(function(){ window.open(webUrl, '_blank'); }, 800);
-  } catch(e){
-    window.open(webUrl, '_blank');
-  }
+  // Fetch docs, apoi trimite
+  fetchTicketDocs(s(r.t), function(docs){
+    openWhatsAppWithMsg(buildWAMessage(r, docs));
+  });
 };
 
 function updatePanelButtons(){
@@ -696,9 +689,46 @@ function markRezolvat(idx){
   updateProgress();
 }
 
-function buildWAMessage(r){
+function buildWAMessage(r, docs){
   var ora = new Date().toLocaleString('ro-RO');
-  return '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
+  var msg = '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
+  if(docs && docs.length > 0){
+    msg += '\n\n📎 *Documente atașate:*';
+    for(var i=0;i<docs.length;i++){
+      msg += '\n' + (i+1) + '. ' + docs[i].name + '\n' + docs[i].url;
+    }
+  }
+  return msg;
+}
+
+// Fetch docs pentru un ticket din Firebase, callback cu array (sau [])
+function fetchTicketDocs(ticketNumber, cb){
+  if(!SHARE_CODE){ cb([]); return; }
+  var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/docs/' + encodeURIComponent(ticketNumber) + '.json';
+  var xhr = new XMLHttpRequest();
+  xhr.timeout = 5000;
+  xhr.open('GET', url, true);
+  xhr.onload = function(){
+    var docs = [];
+    try { var r = JSON.parse(xhr.responseText); if(Array.isArray(r)) docs = r; } catch(e){}
+    cb(docs);
+  };
+  xhr.onerror = function(){ cb([]); };
+  xhr.ontimeout = function(){ cb([]); };
+  xhr.send();
+}
+
+function openWhatsAppWithMsg(waMsg){
+  var msg = encodeURIComponent(waMsg);
+  var phone = '40786590179';
+  var nativeUrl = 'whatsapp://send?phone='+phone+'&text='+msg;
+  var webUrl = 'https://wa.me/'+phone+'?text='+msg;
+  try {
+    window.location.href = nativeUrl;
+    setTimeout(function(){ window.open(webUrl, '_blank'); }, 800);
+  } catch(e){
+    window.open(webUrl, '_blank');
+  }
 }
 
 function showWANotif(r){
@@ -841,17 +871,9 @@ document.addEventListener('click', function(e){
 function sendWAFromRow(i){
   var r = DATA[i];
   if(!r || !r._rezolvat) return;
-  var waMsg = buildWAMessage(r);
-  var msg = encodeURIComponent(waMsg);
-  var phone = '40786590179';
-  var nativeUrl = 'whatsapp://send?phone='+phone+'&text='+msg;
-  var webUrl = 'https://wa.me/'+phone+'?text='+msg;
-  try {
-    window.location.href = nativeUrl;
-    setTimeout(function(){ window.open(webUrl, '_blank'); }, 800);
-  } catch(e){
-    window.open(webUrl, '_blank');
-  }
+  fetchTicketDocs(s(r.t), function(docs){
+    openWhatsAppWithMsg(buildWAMessage(r, docs));
+  });
 }
 
 function render(data){
