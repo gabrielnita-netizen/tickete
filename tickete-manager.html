@@ -245,7 +245,7 @@ function processData(raw){
   document.getElementById('statsArea').style.display='block';
   document.getElementById('uploadZone').style.display='none';
   // Porneste geocodarea in background - utilizator poate interactiona
-  setTimeout(function(){ geocodeAll(function(){ showStatus('✓ Geocodare completă','ok'); }); }, 100);
+  setTimeout(function(){ runGeocoding(function(){ showStatus('✓ Geocodare completă','ok'); }); }, 100);
 }
 
 function cvDate(v){
@@ -467,7 +467,7 @@ function geocodeAddress(addr, city){
 }
 
 // Geocodare secventiala cu delay 1s (Nominatim rate limit)
-function geocodeAll(cb){
+function runGeocoding(cb){
   var total = DATA.length;
   if(total === 0){ cb(); return; }
   var done = 0;
@@ -765,7 +765,7 @@ function clearGeoCache(){
   showStatus('✓ Cache golit ('+count+' adrese). Se regeocodează...','ok');
   if(DATA.length > 0){
     setTimeout(function(){
-      geocodeAll(function(){ showStatus('✓ Regeocodare completă','ok'); });
+      runGeocoding(function(){ showStatus('✓ Regeocodare completă','ok'); });
     }, 500);
   }
 }
