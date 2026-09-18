@@ -155,6 +155,8 @@ tr:active td{background:var(--br-lt)}
 
 /* Rezolvat: doar butonul se schimba, nu tot randul */
 tr.rezolvat td{background:transparent}
+tr.nerezolvat td{background:rgba(255,152,0,0.05);opacity:0.85}
+tr.nerezolvat td:first-child{border-left:3px solid #FF9800}
 
 .cp{cursor:pointer}
 .cp:active{background:var(--br-lt)!important}
@@ -256,9 +258,10 @@ tr.rezolvat td{background:transparent}
 .pan-actions{display:flex;flex-direction:column;gap:10px;padding:0 24px 20px}
 .pan-rez-btn{width:100%;min-height:52px;padding:14px 20px;font-size:16px;border-radius:100px;box-sizing:border-box}
 .pan-wa-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--br-lt);color:var(--t3);border:none;border-radius:100px;padding:14px 20px;font-size:16px;font-weight:700;cursor:not-allowed;min-height:52px;letter-spacing:-.2px;transition:background-color .3s ease,color .3s ease,transform .15s ease;box-sizing:border-box}
-.pan-nerez-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--br-lt);color:var(--t3);border:none;border-radius:100px;padding:14px 20px;font-size:16px;font-weight:700;cursor:not-allowed;min-height:52px;letter-spacing:-.2px;transition:background-color .3s ease,color .3s ease,transform .15s ease;box-sizing:border-box}
-.pan-nerez-btn.on{background:#FF9800;color:#fff;cursor:pointer;animation:waAppear .5s cubic-bezier(.34,1.56,.64,1)}
-.pan-nerez-btn.on:active{transform:scale(.98)}
+.pan-nerez-btn{width:100%;display:flex;align-items:center;justify-content:center;gap:8px;background:var(--su);color:var(--tx);border:2px solid var(--br);border-radius:100px;padding:14px 20px;font-size:16px;font-weight:700;cursor:pointer;min-height:52px;letter-spacing:-.2px;transition:background-color .3s ease,color .3s ease,border-color .3s ease,transform .15s ease;box-sizing:border-box}
+.pan-nerez-btn:hover{background:var(--br-lt)}
+.pan-nerez-btn:active{transform:scale(.98)}
+.pan-nerez-btn.done{background:#FF9800;color:#fff;border-color:#FF9800;animation:waAppear .5s cubic-bezier(.34,1.56,.64,1)}
 .pan-wa-btn.on{background:#25D366;color:#fff;cursor:pointer;animation:waAppear .5s cubic-bezier(.34,1.56,.64,1)}
 .pan-wa-btn.on:active{transform:scale(.98)}
 @keyframes waAppear{
@@ -454,8 +457,18 @@ function saveResolvedStatus(ticketNumber, resolved){
   if(!SHARE_CODE) return;
   var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/resolved.json';
   var payload = {};
-  // Firebase: null sterge cheia
   payload[ticketNumber] = resolved ? true : null;
+  var xhr = new XMLHttpRequest();
+  xhr.open('PATCH', url, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.send(JSON.stringify(payload));
+}
+
+function saveNerezolvatStatus(ticketNumber, nerezolvat){
+  if(!SHARE_CODE) return;
+  var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/nerezolvat.json';
+  var payload = {};
+  payload[ticketNumber] = nerezolvat ? true : null;
   var xhr = new XMLHttpRequest();
   xhr.open('PATCH', url, true);
   xhr.setRequestHeader('Content-Type', 'application/json');
@@ -556,15 +569,17 @@ if(panRezEl) panRezEl.onclick = function(){
   var r = DATA[CURRENT_PANEL_IDX];
   if(!r) return;
   if(r._rezolvat){
-    // Toggle inapoi
     DATA[CURRENT_PANEL_IDX]._rezolvat = false;
     saveResolvedStatus(s(r.t), false);
     updatePanelButtons();
     updateTable();
     updateProgress();
   } else {
+    // Mutual exclusiv cu nerezolvat
     DATA[CURRENT_PANEL_IDX]._rezolvat = true;
+    DATA[CURRENT_PANEL_IDX]._nerezolvat = false;
     saveResolvedStatus(s(r.t), true);
+    saveNerezolvatStatus(s(r.t), false);
     updatePanelButtons();
     updateTable();
     updateProgress();
@@ -574,13 +589,20 @@ if(panRezEl) panRezEl.onclick = function(){
 
 var panNerezEl = document.getElementById('pan-nerez');
 if(panNerezEl) panNerezEl.onclick = function(){
-  if(!panNerezEl.classList.contains('on')) return;
   if(CURRENT_PANEL_IDX < 0) return;
   var r = DATA[CURRENT_PANEL_IDX];
-  if(!r || !r._rezolvat) return;
-  // Demarcheaza ca rezolvat
-  DATA[CURRENT_PANEL_IDX]._rezolvat = false;
-  saveResolvedStatus(s(r.t), false);
+  if(!r) return;
+  if(r._nerezolvat){
+    // Toggle inapoi
+    DATA[CURRENT_PANEL_IDX]._nerezolvat = false;
+    saveNerezolvatStatus(s(r.t), false);
+  } else {
+    // Marcheaza ca nerezolvat (mutual exclusiv cu rezolvat)
+    DATA[CURRENT_PANEL_IDX]._nerezolvat = true;
+    DATA[CURRENT_PANEL_IDX]._rezolvat = false;
+    saveNerezolvatStatus(s(r.t), true);
+    saveResolvedStatus(s(r.t), false);
+  }
   updatePanelButtons();
   updateTable();
   updateProgress();
@@ -591,8 +613,7 @@ if(panWaEl) panWaEl.onclick = function(){
   if(!panWaEl.classList.contains('on')) return;
   if(CURRENT_PANEL_IDX < 0) return;
   var r = DATA[CURRENT_PANEL_IDX];
-  if(!r || !r._rezolvat) return;
-  // Fetch docs, apoi trimite
+  if(!r || (!r._rezolvat && !r._nerezolvat)) return;
   fetchTicketDocs(s(r.t), function(docs){
     openWhatsAppWithMsg(buildWAMessage(r, docs));
   });
@@ -605,14 +626,18 @@ function updatePanelButtons(){
   var rezBtn = document.getElementById('pan-rez');
   var nerezBtn = document.getElementById('pan-nerez');
   var waBtn = document.getElementById('pan-wa');
+  // Reset toate
+  rezBtn.classList.remove('done');
+  if(nerezBtn) nerezBtn.classList.remove('done');
+  if(nerezBtn) nerezBtn.classList.add('on'); // Nerezolvat mereu clickable
+  waBtn.classList.remove('on');
+  // Aplica starea
   if(r._rezolvat){
     rezBtn.classList.add('done');
-    if(nerezBtn) nerezBtn.classList.add('on');
     waBtn.classList.add('on');
-  } else {
-    rezBtn.classList.remove('done');
-    if(nerezBtn) nerezBtn.classList.remove('on');
-    waBtn.classList.remove('on');
+  } else if(r._nerezolvat){
+    if(nerezBtn) nerezBtn.classList.add('done');
+    waBtn.classList.add('on');
   }
 }
 
@@ -690,7 +715,6 @@ function openPanel(i, clickX, clickY){
 function openRezolvat(i){
   var r = DATA[i]; if(!r) return;
   var idx = i;
-  // Daca e deja rezolvat -> toggle inapoi la portocaliu (direct, fara confirm)
   if(r._rezolvat){
     DATA[idx]._rezolvat = false;
     saveResolvedStatus(s(r.t), false);
@@ -698,10 +722,11 @@ function openRezolvat(i){
     updateProgress();
     return;
   }
-  // Marcheaza vizual imediat
+  // Marcheaza vizual imediat (mutual exclusiv cu nerezolvat)
+  DATA[idx]._nerezolvat = false;
+  saveNerezolvatStatus(s(r.t), false);
   markRezolvat(idx);
   saveResolvedStatus(s(r.t), true);
-  // Salveaza in Google Sheets
   logToSheet(r, function(ok){
     showWANotif(r);
   });
@@ -715,7 +740,12 @@ function markRezolvat(idx){
 
 function buildWAMessage(r, docs){
   var ora = new Date().toLocaleString('ro-RO');
-  var msg = '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
+  var msg;
+  if(r._nerezolvat){
+    msg = '\u26A0\uFE0F *TICKET NEREZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nStatus: NEREZOLVAT la '+ora;
+  } else {
+    msg = '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
+  }
   if(docs && docs.length > 0){
     msg += '\n\n📎 *Documente atașate:*';
     for(var i=0;i<docs.length;i++){
@@ -787,7 +817,7 @@ function filtered(){
   if(si) q = (si.value||'').toLowerCase().trim();
 
   var result = DATA.filter(function(r){
-    if(showOnlyUnresolved && r._rezolvat) return false;
+    if(showOnlyUnresolved && (r._rezolvat || r._nerezolvat)) return false;
     if(activeType && (r.ty||'?')!==activeType) return false;
     if(activeLoc && (r.l||'')!==activeLoc) return false;
     if(q){
@@ -823,12 +853,19 @@ function filtered(){
 
 function updateProgress(){
   var total = DATA.length;
-  var done = 0;
-  for(var i=0;i<DATA.length;i++){ if(DATA[i]._rezolvat) done++; }
+  var done = 0, rezolvate = 0, nerezolvate = 0;
+  for(var i=0;i<DATA.length;i++){
+    if(DATA[i]._rezolvat){ done++; rezolvate++; }
+    else if(DATA[i]._nerezolvat){ done++; nerezolvate++; }
+  }
   var pct = total>0 ? Math.round((done/total)*100) : 0;
   var textEl = document.getElementById('progressText');
   var fillEl = document.getElementById('progressFill');
-  if(textEl) textEl.textContent = done+' din '+total+' rezolvate ('+pct+'%)';
+  if(textEl){
+    var txt = done+' din '+total+' finalizate ('+pct+'%)';
+    if(nerezolvate > 0) txt += ' · '+rezolvate+' ✓ / '+nerezolvate+' ⚠';
+    textEl.textContent = txt;
+  }
   if(fillEl) fillEl.style.width = pct+'%';
 }
 function toggleType(type){ activeType=(activeType===type)?null:type; document.querySelectorAll('#typeGrid .card').forEach(function(el){ el.className='card'+(el.getAttribute('data-type')===activeType?' on':''); }); updateTable(); }
@@ -855,10 +892,10 @@ function updateTable(){
         rows += '<tr class="group-header"><td colspan="8"><div class="group-header-inner">'+g+' <span class="group-count">'+count+' tickete</span></div></td></tr>';
       }
     }
-    var rowCls=r._rezolvat?' class="rezolvat"':'';
+    var rowCls = r._rezolvat ? ' class="rezolvat"' : (r._nerezolvat ? ' class="nerezolvat"' : '');
     rows += '<tr'+rowCls+'>'+
       '<td><span class="tlink" data-idx="'+i+'">#'+s(r.t)+'</span></td>'+
-      '<td>'+(r._rezolvat?'<button class="rezolvat-btn done" data-idx="'+i+'"><span class="rez-check"><span class="rez-check-mark">✓</span></span>Rezolvat</button>':'<button class="rezolvat-btn" data-idx="'+i+'"><span class="rez-check"><span class="rez-check-mark">✓</span></span>Rezolvat</button>')+'<button class="row-wa-btn'+(r._rezolvat?' on':'')+'" data-wa-idx="'+i+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12.001 2.003C6.478 2.003 2 6.481 2 12.003c0 1.762.462 3.478 1.34 4.986L2 22.003l5.16-1.354a9.966 9.966 0 004.841 1.232h.004c5.523 0 10.001-4.478 10.001-10 0-5.523-4.478-10.001-10.005-9.878z"/></svg>Send WA</button></td>'+
+      '<td>'+(r._rezolvat?'<button class="rezolvat-btn done" data-idx="'+i+'"><span class="rez-check"><span class="rez-check-mark">✓</span></span>Rezolvat</button>':'<button class="rezolvat-btn" data-idx="'+i+'"><span class="rez-check"><span class="rez-check-mark">✓</span></span>Rezolvat</button>')+'<button class="row-wa-btn'+((r._rezolvat||r._nerezolvat)?' on':'')+'" data-wa-idx="'+i+'"><svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347zM12.001 2.003C6.478 2.003 2 6.481 2 12.003c0 1.762.462 3.478 1.34 4.986L2 22.003l5.16-1.354a9.966 9.966 0 004.841 1.232h.004c5.523 0 10.001-4.478 10.001-10 0-5.523-4.478-10.001-10.005-9.878z"/></svg>Send WA</button></td>'+
       '<td class="cp"><span class="rowlbl">Account</span>'+s(r.a)+'</td><td class="cp"><span class="rowlbl">Beneficiar</span>'+s(r.b)+'</td>'+
       '<td class="cp"><span class="rowlbl">Localitate</span>'+s(r.l)+'</td><td class="cp"><span class="rowlbl">Tip</span><span class="badge">'+s(r.ty)+'</span></td>'+
       '<td class="cp"><span class="rowlbl">Inițiere</span>'+fmtDate(r.d)+'</td><td class="cp"><span class="rowlbl">Programată</span>'+fmtDate(r.dp)+'</td>'+
@@ -894,7 +931,7 @@ document.addEventListener('click', function(e){
 
 function sendWAFromRow(i){
   var r = DATA[i];
-  if(!r || !r._rezolvat) return;
+  if(!r || (!r._rezolvat && !r._nerezolvat)) return;
   fetchTicketDocs(s(r.t), function(docs){
     openWhatsAppWithMsg(buildWAMessage(r, docs));
   });
@@ -1223,11 +1260,17 @@ function load(){
               var sub = document.getElementById('subtitle');
               if(sub) sub.innerHTML = 'Raport intervenții teren · <span style="color:var(--pr);font-weight:600">Livrat '+fmtDate(res.ts)+'</span>';
             }
-            // Aplica statusurile rezolvate persistate
+            // Aplica statusurile rezolvate + nerezolvate persistate
             if(res.resolved && typeof res.resolved === 'object'){
               for(var k=0;k<res.data.length;k++){
                 var tn = s(res.data[k].t);
                 if(res.resolved[tn]) res.data[k]._rezolvat = true;
+              }
+            }
+            if(res.nerezolvat && typeof res.nerezolvat === 'object'){
+              for(var kn=0;kn<res.data.length;kn++){
+                var tnn = s(res.data[kn].t);
+                if(res.nerezolvat[tnn]) res.data[kn]._nerezolvat = true;
               }
             }
             render(res.data);
