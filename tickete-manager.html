@@ -145,6 +145,31 @@ tr:hover td{background:rgba(74,144,226,.04)}
 </div>
 
 <!-- Map Modal -->
+<!-- Contact editor modal -->
+<div class="modal-bg" id="contactModal" style="z-index:400">
+  <div style="background:var(--su);border-radius:12px;width:100%;max-width:600px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--br);flex-shrink:0">
+      <h2 style="font-size:16px;color:var(--pr)">✏️ Contacte & Info · <span id="contactTicketNr" style="color:var(--t2);font-weight:500"></span></h2>
+      <button onclick="closeContactEditor()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t2);padding:2px 6px">✕</button>
+    </div>
+    <div style="flex:1;overflow-y:auto;padding:18px 20px">
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:13px;font-weight:600;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">📞 Persoane contact</label>
+        <div id="contactsList" style="display:flex;flex-direction:column;gap:8px"></div>
+        <button onclick="addContact()" style="margin-top:10px;background:var(--br-lt);border:1px dashed var(--br);border-radius:8px;padding:10px 14px;font-size:13px;color:var(--tx);cursor:pointer;width:100%;font-weight:600">+ Adaugă persoană contact</button>
+      </div>
+      <div style="margin-bottom:16px">
+        <label style="display:block;font-size:13px;font-weight:600;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">ℹ️ Informații suplimentare</label>
+        <textarea id="contactInfo" placeholder="Ex: Poartă cu interfon, sună de 2 ori. Câine în curte. Client vorbește doar seara..." style="width:100%;min-height:80px;padding:12px;border:1px solid var(--br);border-radius:8px;background:var(--bg);color:var(--tx);font-family:inherit;font-size:14px;resize:vertical;box-sizing:border-box"></textarea>
+      </div>
+    </div>
+    <div style="padding:14px 20px;border-top:1px solid var(--br);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0">
+      <button onclick="closeContactEditor()" style="background:var(--br-lt);color:var(--tx);border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-weight:600">Anulează</button>
+      <button onclick="saveContactEditor()" style="background:#4caf50;color:#fff;border:none;border-radius:8px;padding:10px 18px;font-size:14px;cursor:pointer;font-weight:700">💾 Salvează</button>
+    </div>
+  </div>
+</div>
+
 <div class="modal-bg" id="mapModal" style="z-index:300">
   <div style="background:var(--su);border-radius:12px;width:100%;max-width:960px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--br);flex-shrink:0">
@@ -240,11 +265,11 @@ function processData(raw){
       l:g(r,'obj__loc'),ad:g(r,'obj__address'),j:g(r,'obj__jud'),ty:g(r,'type'),
       d:cvDate(g(r,'obj__objevents__last_date')),dp:cvDate(g(r,'date_prg')),n:g(r,'note')};
   });
+  restoreExtraFromLocalStorage();
   activeType=null; activeLoc=null;
   buildStats();
   document.getElementById('statsArea').style.display='block';
   document.getElementById('uploadZone').style.display='none';
-  // Porneste geocodarea in background - utilizator poate interactiona
   setTimeout(function(){ runGeocoding(function(){ showStatus('✓ Geocodare completă','ok'); }); }, 100);
 }
 
@@ -528,9 +553,11 @@ function updateTable(){
   var rows=src.map(function(r){
     var i=DATA.indexOf(r);
     var sel = SELECTED[s(r.t)] ? true : false;
+    var hasExtra = (r.contacts && r.contacts.length > 0) || (r.info && r.info.trim());
+    var extraIcon = hasExtra ? '<span style="color:#4caf50;margin-left:4px" title="Are contacte/info">📞</span>' : '';
     return '<tr'+(sel?' style="background:rgba(76,175,80,.08)"':'')+'>'+
       '<td style="text-align:center"><input type="checkbox" class="row-check" data-tid="'+s(r.t)+'"'+(sel?' checked':'')+' style="width:18px;height:18px;cursor:pointer;accent-color:#4caf50"></td>'+
-      '<td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span></td>'+
+      '<td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span>'+extraIcon+' <button class="edit-contact-btn" data-idx="'+i+'" title="Editează contacte/info" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 6px;opacity:.6;border-radius:4px">✏️</button></td>'+
       '<td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td>'+
       '<td class="cp">'+s(r.l)+'</td><td class="cp">'+s(r.ty)+'</td>'+
       '<td class="cp">'+s(r.d)+'</td><td class="cp">'+s(r.dp)+'</td>'+
@@ -538,6 +565,7 @@ function updateTable(){
   }).join('');
   document.getElementById('tbody').innerHTML=rows||'<tr><td colspan="8" class="empty">Nu există tickete pentru filtrul selectat</td></tr>';
   document.querySelectorAll('.tlink').forEach(function(el){ el.onclick=function(){ openPanel(parseInt(el.getAttribute('data-idx'))); }; });
+  document.querySelectorAll('.edit-contact-btn').forEach(function(el){ el.onclick=function(e){ e.stopPropagation(); openContactEditor(parseInt(el.getAttribute('data-idx'))); }; });
   document.querySelectorAll('td.cp').forEach(function(el){ el.onclick=function(){ cp(el.textContent||el.innerText,el); }; });
   document.querySelectorAll('.row-check').forEach(function(chk){
     chk.onclick=function(e){ e.stopPropagation(); toggleSelectRow(chk.getAttribute('data-tid'), chk); };
@@ -645,6 +673,8 @@ function shareLink(){
       n: s(r.note || r.n)
     };
     if(r.lat && r.lng){ obj.lat = r.lat; obj.lng = r.lng; }
+    if(r.contacts && r.contacts.length){ obj.contacts = r.contacts; }
+    if(r.info) obj.info = r.info;
     return obj;
   });
 
@@ -1033,6 +1063,100 @@ function closeMap(){
 }
 
 document.getElementById('mapModal').onclick=function(e){if(e.target===this)closeMap();};
+
+// ============ EDITOR CONTACTE & INFO ============
+var CURRENT_CONTACT_IDX = -1;
+
+function openContactEditor(idx){
+  var r = DATA[idx];
+  if(!r) return;
+  CURRENT_CONTACT_IDX = idx;
+  document.getElementById('contactTicketNr').textContent = s(r.t) + ' — ' + s(r.b);
+  // Restaureaza contacte
+  var contacts = r.contacts && r.contacts.length ? r.contacts.slice() : [];
+  if(contacts.length === 0) contacts.push({name:'', phone:''});
+  renderContactsList(contacts);
+  // Restaureaza info
+  document.getElementById('contactInfo').value = r.info || '';
+  document.getElementById('contactModal').className = 'modal-bg on';
+}
+
+function renderContactsList(contacts){
+  var html = '';
+  contacts.forEach(function(c, i){
+    html += '<div class="contact-row" style="display:flex;gap:8px;align-items:center">'+
+      '<input type="text" data-field="name" data-idx="'+i+'" value="'+(c.name||'').replace(/"/g,'&quot;')+'" placeholder="Nume și prenume" style="flex:1;padding:10px 12px;border:1px solid var(--br);border-radius:8px;background:var(--bg);color:var(--tx);font-family:inherit;font-size:14px;box-sizing:border-box">'+
+      '<input type="tel" data-field="phone" data-idx="'+i+'" value="'+(c.phone||'').replace(/"/g,'&quot;')+'" placeholder="07XX XXX XXX" style="width:150px;padding:10px 12px;border:1px solid var(--br);border-radius:8px;background:var(--bg);color:var(--tx);font-family:inherit;font-size:14px;box-sizing:border-box">'+
+      '<button onclick="removeContact('+i+')" style="background:none;border:none;color:#e53935;cursor:pointer;font-size:18px;padding:4px 8px" title="Șterge">🗑️</button>'+
+      '</div>';
+  });
+  document.getElementById('contactsList').innerHTML = html;
+}
+
+function getCurrentContactsFromUI(){
+  var contacts = [];
+  var rows = document.querySelectorAll('#contactsList .contact-row');
+  rows.forEach(function(row){
+    var name = row.querySelector('[data-field="name"]').value.trim();
+    var phone = row.querySelector('[data-field="phone"]').value.trim();
+    if(name || phone) contacts.push({name: name, phone: phone});
+  });
+  return contacts;
+}
+
+function addContact(){
+  var current = getCurrentContactsFromUI();
+  current.push({name:'', phone:''});
+  renderContactsList(current);
+  // Focus pe primul input al ultimului rand
+  var rows = document.querySelectorAll('#contactsList .contact-row');
+  if(rows.length){
+    rows[rows.length-1].querySelector('[data-field="name"]').focus();
+  }
+}
+
+function removeContact(idx){
+  var current = getCurrentContactsFromUI();
+  current.splice(idx, 1);
+  if(current.length === 0) current.push({name:'', phone:''});
+  renderContactsList(current);
+}
+
+function saveContactEditor(){
+  if(CURRENT_CONTACT_IDX < 0) return;
+  var r = DATA[CURRENT_CONTACT_IDX];
+  if(!r) return;
+  r.contacts = getCurrentContactsFromUI();
+  r.info = document.getElementById('contactInfo').value.trim();
+  // Persist in localStorage keyed by ticket number
+  try {
+    localStorage.setItem('extra:'+s(r.t), JSON.stringify({contacts:r.contacts, info:r.info}));
+  } catch(e){}
+  closeContactEditor();
+  updateTable();
+  showStatus('✓ Contacte salvate pentru ticket '+s(r.t),'ok');
+}
+
+function closeContactEditor(){
+  document.getElementById('contactModal').className = 'modal-bg';
+  CURRENT_CONTACT_IDX = -1;
+}
+
+document.getElementById('contactModal').onclick = function(e){ if(e.target===this) closeContactEditor(); };
+
+// Restaureaza contacte din localStorage la load date
+function restoreExtraFromLocalStorage(){
+  DATA.forEach(function(r){
+    try {
+      var raw = localStorage.getItem('extra:'+s(r.t));
+      if(raw){
+        var extra = JSON.parse(raw);
+        if(extra.contacts) r.contacts = extra.contacts;
+        if(extra.info) r.info = extra.info;
+      }
+    } catch(e){}
+  });
+}
 
 // Select all checkbox in header
 var selectAllChkEl = document.getElementById('selectAllChk');
