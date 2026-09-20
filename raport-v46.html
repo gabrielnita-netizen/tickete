@@ -319,6 +319,8 @@ tr.nerezolvat td:first-child{border-left:3px solid #FF9800}
 .contact-edit-row input:focus{border-color:var(--tx)}
 .contact-edit-row input[data-field="phone"]{flex:.7;max-width:150px}
 .contact-edit-row .contact-del{background:none;border:none;color:#e53935;cursor:pointer;font-size:18px;padding:4px 8px}
+.contact-edit-row .contact-plus{background:#4caf50;border:none;color:#fff;cursor:pointer;font-size:20px;font-weight:700;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;padding:0;line-height:1;flex-shrink:0}
+.contact-edit-row .contact-plus:active{transform:scale(.92)}
 .contact-add-btn{margin-top:10px;background:var(--su);color:var(--tx);border:2px dashed var(--br);border-radius:10px;padding:12px 14px;font-size:14px;cursor:pointer;width:100%;font-weight:600}
 .contact-add-btn:hover{background:var(--br-lt);border-color:var(--tx);border-style:solid}
 #contactEditInfo{width:100%;min-height:100px;padding:12px 14px;border:1px solid var(--br);border-radius:10px;background:var(--su);color:var(--tx);font-family:inherit;font-size:14px;resize:vertical;box-sizing:border-box;outline:none}
@@ -2252,10 +2254,19 @@ function renderContactEditList(contacts){
     html += '<div class="contact-edit-row">'+
       '<input type="text" data-field="name" placeholder="Nume" value="'+(c.name||'').replace(/"/g,'&quot;')+'">'+
       '<input type="tel" data-field="phone" placeholder="07XX XXX XXX" value="'+(c.phone||'').replace(/"/g,'&quot;')+'">'+
+      '<button class="contact-plus" onclick="addContactEditAt('+i+')" title="Adaugă alt contact">+</button>'+
       '<button class="contact-del" onclick="removeContactEdit('+i+')" title="Șterge">🗑️</button>'+
       '</div>';
   });
   document.getElementById('contactEditList').innerHTML = html;
+}
+
+function addContactEditAt(afterIdx){
+  var current = getContactsFromEditUI();
+  current.splice(afterIdx+1, 0, {name:'', phone:''});
+  renderContactEditList(current);
+  var rows = document.querySelectorAll('#contactEditList .contact-edit-row');
+  if(rows[afterIdx+1]){ rows[afterIdx+1].querySelector('[data-field="name"]').focus(); }
 }
 
 function getContactsFromEditUI(){
