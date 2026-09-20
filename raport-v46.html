@@ -708,7 +708,7 @@ function openPanel(i, clickX, clickY){
   renderPanelDocs(s(r.t));
   var fields = [['Account',r.a,false],['Beneficiar',r.b,false],['Obiectiv',r.ob,false],['Localitate',r.l,false],['Adresă',r.ad,false],['Județ',r.j,false],['Tip',r.ty,true],['Notă',r.n,false],['Inițiere',fmtDate(r.d),false],['Programată',fmtDate(r.dp),false]];
   var html = '';
-  // Contacte manuale (introduse din manager) - la inceput
+  // Contacte manuale (introduse din manager) - READ-ONLY, doar apelabile
   if(r.contacts && r.contacts.length > 0){
     var contactsHtml = '<div class="fr fr-phones"><span class="fl">📞 Contact</span><span class="fv fv-phones fv-contacts">';
     for(var ci=0;ci<r.contacts.length;ci++){
@@ -724,13 +724,8 @@ function openPanel(i, clickX, clickY){
         contactsHtml += '<span class="phone-btn" style="background:var(--br-lt);color:var(--tx)">'+label+'</span>';
       }
     }
-    // Buton + pentru adaugare din raport
-    contactsHtml += '<button class="phone-btn phone-btn-add" onclick="openContactEditorReport('+i+')">+ Adaugă</button>';
     contactsHtml += '</span></div>';
     html += contactsHtml;
-  } else {
-    // Fara contacte inca - buton + pentru primul contact
-    html += '<div class="fr fr-phones"><span class="fl">📞 Contact</span><span class="fv fv-phones"><button class="phone-btn phone-btn-add" onclick="openContactEditorReport('+i+')">+ Adaugă persoană contact</button></span></div>';
   }
   // Detecteaza telefoane in nota (si adresa/beneficiar ca fallback)
   var phones = extractPhones(s(r.n) + ' ' + s(r.ad) + ' ' + s(r.b));
@@ -758,13 +753,9 @@ function openPanel(i, clickX, clickY){
     }
     else{ vh='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+val.replace(/\n/g,'<br>')+'</span>'; }
     html += '<div class="fr"><span class="fl">'+lbl+'</span>'+vh+'</div>';
-    // Dupa Nota - adauga Info (daca exista) + buton edit
-    if(lbl==='Notă'){
-      if(r.info && r.info.trim()){
-        html += '<div class="fr"><span class="fl">ℹ️ Info</span><span class="fv fv-note" style="background:rgba(255,193,7,.1);padding:8px 12px;border-radius:8px;border-left:3px solid #FFC107">'+linkifyPhones(r.info).replace(/\n/g,'<br>')+' <button class="phone-btn phone-btn-add phone-btn-small" onclick="openContactEditorReport('+i+')" style="margin-left:8px">✏️</button></span></div>';
-      } else {
-        html += '<div class="fr"><span class="fl">ℹ️ Info</span><span class="fv"><button class="phone-btn phone-btn-add" onclick="openContactEditorReport('+i+')">+ Adaugă notă/info</button></span></div>';
-      }
+    // Dupa Nota - adauga Info daca exista (doar afisat, fara editare)
+    if(lbl==='Notă' && r.info && r.info.trim()){
+      html += '<div class="fr"><span class="fl">ℹ️ Info</span><span class="fv fv-note" style="background:rgba(255,193,7,.1);padding:8px 12px;border-radius:8px;border-left:3px solid #FFC107">'+linkifyPhones(r.info).replace(/\n/g,'<br>')+'</span></div>';
     }
   }
   document.getElementById('pbody').innerHTML = html;
