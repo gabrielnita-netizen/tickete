@@ -301,6 +301,31 @@ tr.nerezolvat td:first-child{border-left:3px solid #FF9800}
 .phone-btn:hover{background:var(--em);color:#fff}
 .phone-link{display:inline-flex;align-items:center;gap:4px;background:var(--em-lt);color:var(--em);border-radius:8px;padding:2px 8px;font-weight:600;text-decoration:none;font-size:.9em;margin:0 2px}
 .phone-link:active{transform:scale(.95)}
+.phone-btn-add{background:var(--su);color:var(--tx);border:2px dashed var(--br);cursor:pointer;font-weight:600}
+.phone-btn-add:hover{background:var(--br-lt);border-color:var(--tx);border-style:solid}
+.phone-btn-small{padding:4px 10px!important;font-size:12px!important;min-height:0!important}
+
+/* Contact edit modal in raport */
+.contact-edit-modal{display:none;position:fixed;top:0;left:0;width:100vw;height:100vh;height:100dvh;background:rgba(0,0,0,.8);z-index:600;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+.contact-edit-modal.on{display:flex}
+.contact-edit-inner{background:var(--bg);border-radius:20px;width:100%;max-width:520px;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.contact-edit-header{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;border-bottom:1px solid var(--br);flex-shrink:0}
+.contact-edit-header h2{font-size:17px;font-weight:700;color:var(--tx);letter-spacing:-.3px}
+.contact-edit-body{flex:1;overflow-y:auto;padding:18px 22px}
+.contact-edit-label{display:block;font-size:12px;font-weight:700;color:var(--t2);margin-bottom:10px;text-transform:uppercase;letter-spacing:.5px}
+#contactEditList{display:flex;flex-direction:column;gap:8px}
+.contact-edit-row{display:flex;gap:8px;align-items:center}
+.contact-edit-row input{flex:1;padding:12px 14px;border:1px solid var(--br);border-radius:10px;background:var(--su);color:var(--tx);font-family:inherit;font-size:14px;box-sizing:border-box;outline:none}
+.contact-edit-row input:focus{border-color:var(--tx)}
+.contact-edit-row input[data-field="phone"]{flex:.7;max-width:150px}
+.contact-edit-row .contact-del{background:none;border:none;color:#e53935;cursor:pointer;font-size:18px;padding:4px 8px}
+.contact-add-btn{margin-top:10px;background:var(--su);color:var(--tx);border:2px dashed var(--br);border-radius:10px;padding:12px 14px;font-size:14px;cursor:pointer;width:100%;font-weight:600}
+.contact-add-btn:hover{background:var(--br-lt);border-color:var(--tx);border-style:solid}
+#contactEditInfo{width:100%;min-height:100px;padding:12px 14px;border:1px solid var(--br);border-radius:10px;background:var(--su);color:var(--tx);font-family:inherit;font-size:14px;resize:vertical;box-sizing:border-box;outline:none}
+#contactEditInfo:focus{border-color:var(--tx)}
+.contact-edit-footer{padding:14px 22px;border-top:1px solid var(--br);display:flex;gap:10px;justify-content:flex-end;flex-shrink:0}
+.contact-cancel-btn{background:var(--br-lt);color:var(--tx);border:none;border-radius:100px;padding:12px 20px;font-size:14px;cursor:pointer;font-weight:600}
+.contact-save-btn{background:#4caf50;color:#fff;border:none;border-radius:100px;padding:12px 22px;font-size:14px;cursor:pointer;font-weight:700}
 .fv-note{text-align:right}
 
 button{padding:10px 18px;border:none;border-radius:100px;background:var(--su);color:var(--pr);cursor:pointer;font-size:15px;font-weight:600}
@@ -413,6 +438,27 @@ button{padding:10px 18px;border:none;border-radius:100px;background:var(--su);co
 </div>
 
 <!-- Doc viewer -->
+<!-- Contact editor modal (raport) -->
+<div id="contactEdit" class="contact-edit-modal">
+  <div class="contact-edit-inner">
+    <div class="contact-edit-header">
+      <h2>✏️ Contact & Info</h2>
+      <button class="scan-close" id="contactEditClose">✕</button>
+    </div>
+    <div class="contact-edit-body">
+      <label class="contact-edit-label">📞 Persoane contact</label>
+      <div id="contactEditList"></div>
+      <button class="contact-add-btn" id="contactAddBtn">+ Adaugă persoană contact</button>
+      <label class="contact-edit-label" style="margin-top:16px">ℹ️ Informații</label>
+      <textarea id="contactEditInfo" placeholder="Ex: Poartă cu interfon..."></textarea>
+    </div>
+    <div class="contact-edit-footer">
+      <button class="contact-cancel-btn" id="contactEditCancel">Anulează</button>
+      <button class="contact-save-btn" id="contactEditSave">💾 Salvează</button>
+    </div>
+  </div>
+</div>
+
 <div id="doc-viewer" class="doc-viewer">
   <div class="doc-viewer-header">
     <button class="scan-close" id="doc-viewer-close">✕</button>
@@ -660,7 +706,7 @@ function openPanel(i, clickX, clickY){
   renderPanelDocs(s(r.t));
   var fields = [['Account',r.a,false],['Beneficiar',r.b,false],['Obiectiv',r.ob,false],['Localitate',r.l,false],['Adresă',r.ad,false],['Județ',r.j,false],['Tip',r.ty,true],['Notă',r.n,false],['Inițiere',fmtDate(r.d),false],['Programată',fmtDate(r.dp),false]];
   var html = '';
-  // Contacte manuale (introduse din manager)
+  // Contacte manuale (introduse din manager) - la inceput
   if(r.contacts && r.contacts.length > 0){
     var contactsHtml = '<div class="fr fr-phones"><span class="fl">📞 Contact</span><span class="fv fv-phones fv-contacts">';
     for(var ci=0;ci<r.contacts.length;ci++){
@@ -676,17 +722,18 @@ function openPanel(i, clickX, clickY){
         contactsHtml += '<span class="phone-btn" style="background:var(--br-lt);color:var(--tx)">'+label+'</span>';
       }
     }
+    // Buton + pentru adaugare din raport
+    contactsHtml += '<button class="phone-btn phone-btn-add" onclick="openContactEditorReport('+i+')">+ Adaugă</button>';
     contactsHtml += '</span></div>';
     html += contactsHtml;
-  }
-  // Info suplimentare
-  if(r.info && r.info.trim()){
-    html += '<div class="fr"><span class="fl">ℹ️ Info</span><span class="fv fv-note" style="background:rgba(255,193,7,.1);padding:8px 12px;border-radius:8px;border-left:3px solid #FFC107">'+linkifyPhones(r.info).replace(/\n/g,'<br>')+'</span></div>';
+  } else {
+    // Fara contacte inca - buton + pentru primul contact
+    html += '<div class="fr fr-phones"><span class="fl">📞 Contact</span><span class="fv fv-phones"><button class="phone-btn phone-btn-add" onclick="openContactEditorReport('+i+')">+ Adaugă persoană contact</button></span></div>';
   }
   // Detecteaza telefoane in nota (si adresa/beneficiar ca fallback)
   var phones = extractPhones(s(r.n) + ' ' + s(r.ad) + ' ' + s(r.b));
   if(phones.length > 0){
-    var phonesHtml = '<div class="fr fr-phones"><span class="fl">Sună</span><span class="fv fv-phones">';
+    var phonesHtml = '<div class="fr fr-phones"><span class="fl">Sună (din notă)</span><span class="fv fv-phones">';
     for(var pi=0;pi<phones.length;pi++){
       phonesHtml += '<a href="tel:'+phones[pi].tel+'" class="phone-btn">📞 '+phones[pi].raw+'</a>';
     }
@@ -709,6 +756,14 @@ function openPanel(i, clickX, clickY){
     }
     else{ vh='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+val.replace(/\n/g,'<br>')+'</span>'; }
     html += '<div class="fr"><span class="fl">'+lbl+'</span>'+vh+'</div>';
+    // Dupa Nota - adauga Info (daca exista) + buton edit
+    if(lbl==='Notă'){
+      if(r.info && r.info.trim()){
+        html += '<div class="fr"><span class="fl">ℹ️ Info</span><span class="fv fv-note" style="background:rgba(255,193,7,.1);padding:8px 12px;border-radius:8px;border-left:3px solid #FFC107">'+linkifyPhones(r.info).replace(/\n/g,'<br>')+' <button class="phone-btn phone-btn-add phone-btn-small" onclick="openContactEditorReport('+i+')" style="margin-left:8px">✏️</button></span></div>';
+      } else {
+        html += '<div class="fr"><span class="fl">ℹ️ Info</span><span class="fv"><button class="phone-btn phone-btn-add" onclick="openContactEditorReport('+i+')">+ Adaugă notă/info</button></span></div>';
+      }
+    }
   }
   document.getElementById('pbody').innerHTML = html;
   document.querySelectorAll('#pbody .fv[data-val]').forEach(function(el){ el.onclick=function(){ cp(el.getAttribute('data-val'),el); }; });
@@ -1308,6 +1363,16 @@ function load(){
               for(var kn=0;kn<res.data.length;kn++){
                 var tnn = s(res.data[kn].t);
                 if(res.nerezolvat[tnn]) res.data[kn]._nerezolvat = true;
+              }
+            }
+            // Extras (contacts + info adaugate din raport) - suprascriu ce vine din manager
+            if(res.extra && typeof res.extra === 'object'){
+              for(var ke=0;ke<res.data.length;ke++){
+                var tne = s(res.data[ke].t);
+                if(res.extra[tne]){
+                  if(res.extra[tne].contacts) res.data[ke].contacts = res.extra[tne].contacts;
+                  if(res.extra[tne].info) res.data[ke].info = res.extra[tne].info;
+                }
               }
             }
             render(res.data);
@@ -2166,6 +2231,102 @@ document.getElementById('scan-file-input').onchange = function(e){
   e.target.value = '';
 };
 initCornerDragHandlers();
+
+// ============ EDITOR CONTACTE & INFO (Raport) ============
+var CONTACT_EDIT_IDX = -1;
+
+function openContactEditorReport(idx){
+  var r = DATA[idx];
+  if(!r) return;
+  CONTACT_EDIT_IDX = idx;
+  var contacts = r.contacts && r.contacts.length ? r.contacts.slice() : [];
+  if(contacts.length === 0) contacts.push({name:'', phone:''});
+  renderContactEditList(contacts);
+  document.getElementById('contactEditInfo').value = r.info || '';
+  document.getElementById('contactEdit').classList.add('on');
+}
+
+function renderContactEditList(contacts){
+  var html = '';
+  contacts.forEach(function(c, i){
+    html += '<div class="contact-edit-row">'+
+      '<input type="text" data-field="name" placeholder="Nume" value="'+(c.name||'').replace(/"/g,'&quot;')+'">'+
+      '<input type="tel" data-field="phone" placeholder="07XX XXX XXX" value="'+(c.phone||'').replace(/"/g,'&quot;')+'">'+
+      '<button class="contact-del" onclick="removeContactEdit('+i+')" title="Șterge">🗑️</button>'+
+      '</div>';
+  });
+  document.getElementById('contactEditList').innerHTML = html;
+}
+
+function getContactsFromEditUI(){
+  var contacts = [];
+  var rows = document.querySelectorAll('#contactEditList .contact-edit-row');
+  rows.forEach(function(row){
+    var name = row.querySelector('[data-field="name"]').value.trim();
+    var phone = row.querySelector('[data-field="phone"]').value.trim();
+    if(name || phone) contacts.push({name: name, phone: phone});
+  });
+  return contacts;
+}
+
+function addContactEdit(){
+  var current = getContactsFromEditUI();
+  current.push({name:'', phone:''});
+  renderContactEditList(current);
+  var rows = document.querySelectorAll('#contactEditList .contact-edit-row');
+  if(rows.length){ rows[rows.length-1].querySelector('[data-field="name"]').focus(); }
+}
+
+function removeContactEdit(idx){
+  var current = getContactsFromEditUI();
+  current.splice(idx, 1);
+  if(current.length === 0) current.push({name:'', phone:''});
+  renderContactEditList(current);
+}
+
+function saveContactEdit(){
+  if(CONTACT_EDIT_IDX < 0) return;
+  var r = DATA[CONTACT_EDIT_IDX];
+  if(!r) return;
+  r.contacts = getContactsFromEditUI();
+  r.info = document.getElementById('contactEditInfo').value.trim();
+  saveContactsToFirebase(s(r.t), r.contacts, r.info);
+  var currentIdx = CURRENT_PANEL_IDX;
+  closeContactEdit();
+  if(currentIdx >= 0){ openPanel(currentIdx); }
+}
+
+function closeContactEdit(){
+  document.getElementById('contactEdit').classList.remove('on');
+  CONTACT_EDIT_IDX = -1;
+}
+
+function saveContactsToFirebase(ticketNumber, contacts, info){
+  if(!SHARE_CODE) return;
+  var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/extra/' + encodeURIComponent(ticketNumber) + '.json';
+  var payload = {};
+  if(contacts && contacts.length) payload.contacts = contacts;
+  if(info) payload.info = info;
+  var xhr = new XMLHttpRequest();
+  xhr.open('PUT', url, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.send(JSON.stringify(payload));
+}
+
+document.getElementById('contactEditClose').onclick = closeContactEdit;
+document.getElementById('contactEditCancel').onclick = closeContactEdit;
+document.getElementById('contactEditSave').onclick = saveContactEdit;
+document.getElementById('contactAddBtn').onclick = addContactEdit;
+document.getElementById('contactEdit').onclick = function(e){ if(e.target===this) closeContactEdit(); };
+
+// Trick pentru ascundere bara URL Chrome mobile
+window.addEventListener('load', function(){
+  setTimeout(function(){
+    if(window.innerHeight < 720){
+      window.scrollTo(0, 1);
+    }
+  }, 300);
+});
 
 load();
 </script>
