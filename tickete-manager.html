@@ -248,7 +248,15 @@ function handleFiles(files){
   reader.onload=function(e){
     try{
       var wb=XLSX.read(new Uint8Array(e.target.result),{type:'array',defval:''});
-      var raw=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{defval:''});
+      var sheet = wb.Sheets[wb.SheetNames[0]];
+      var raw=XLSX.utils.sheet_to_json(sheet,{defval:''});
+      // Citeste si formatul array pentru a avea acces la coloane pe pozitie (A, B, ... AD)
+      var arrRows = XLSX.utils.sheet_to_json(sheet,{defval:'',header:1});
+      // arrRows[0] = capul de tabel (header), arrRows[1..] = date
+      // Pentru fiecare rand din raw, adauga referinta la array
+      raw.forEach(function(r, idx){
+        r.__rowArr = arrRows[idx+1]; // +1 pentru ca arrRows include header
+      });
       if(!raw.length){ showStatus('❌ Fișierul e gol','err'); return; }
       processData(raw);
       showStatus('✓ Încărcat '+raw.length+' tickete','ok');
@@ -259,11 +267,22 @@ function handleFiles(files){
 
 function g(row){ for(var i=1;i<arguments.length;i++){var v=row[arguments[i]];if(v!=null&&v!=='')return String(v).trim();}return ''; }
 
+// Citeste dintr-o coloana specifica pe pozitie (0-based). Ex: gCol(row, 29) = coloana AD
+function gCol(row, colIdx){
+  if(row.__rowArr && row.__rowArr[colIdx] !== undefined && row.__rowArr[colIdx] !== ''){
+    return String(row.__rowArr[colIdx]).trim();
+  }
+  return '';
+}
+
 function processData(raw){
-  DATA=raw.filter(function(r){return Object.values(r).some(function(v){return v!=='';});}).map(function(r){
+  DATA=raw.filter(function(r){return Object.values(r).some(function(v){return v!=='' && v!==null;});}).map(function(r){
+    // Data programata: cauta dupa nume, fallback pe coloana AD (index 29, adica a 30-a)
+    var dpVal = g(r,'date_prg');
+    if(!dpVal) dpVal = gCol(r, 29); // Coloana AD
     return {t:g(r,'numar'),a:g(r,'obj__hexid'),b:g(r,'obj__client__denumire'),ob:g(r,'obj__name'),
       l:g(r,'obj__loc'),ad:g(r,'obj__address'),j:g(r,'obj__jud'),ty:g(r,'type'),
-      d:cvDate(g(r,'obj__objevents__last_date')),dp:cvDate(g(r,'date_prg')),n:g(r,'note')};
+      d:cvDate(g(r,'obj__objevents__last_date')),dp:cvDate(dpVal),n:g(r,'note')};
   });
   restoreExtraFromLocalStorage();
   activeType=null; activeLoc=null;
