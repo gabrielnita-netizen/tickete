@@ -277,12 +277,15 @@ function gCol(row, colIdx){
 
 function processData(raw){
   DATA=raw.filter(function(r){return Object.values(r).some(function(v){return v!=='' && v!==null;});}).map(function(r){
-    // Data programata: cauta dupa nume, fallback pe coloana AD (index 29, adica a 30-a)
+    // Data programata: cauta dupa nume, fallback pe coloana AD (index 29)
     var dpVal = g(r,'date_prg');
-    if(!dpVal) dpVal = gCol(r, 29); // Coloana AD
+    if(!dpVal) dpVal = gCol(r, 29);
+    var dpFinal = cvDate(dpVal) || 'NA';
+    var dVal = g(r,'obj__objevents__last_date');
+    var dFinal = cvDate(dVal) || 'NA';
     return {t:g(r,'numar'),a:g(r,'obj__hexid'),b:g(r,'obj__client__denumire'),ob:g(r,'obj__name'),
       l:g(r,'obj__loc'),ad:g(r,'obj__address'),j:g(r,'obj__jud'),ty:g(r,'type'),
-      d:cvDate(g(r,'obj__objevents__last_date')),dp:cvDate(dpVal),n:g(r,'note')};
+      d:dFinal, dp:dpFinal, n:g(r,'note')};
   });
   restoreExtraFromLocalStorage();
   activeType=null; activeLoc=null;

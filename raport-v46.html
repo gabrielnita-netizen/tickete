@@ -739,8 +739,6 @@ function openPanel(i, clickX, clickY){
   }
   for(var k=0;k<fields.length;k++){
     var lbl=fields[k][0], val=s(fields[k][1]), badge=fields[k][2], vh;
-    // Sari peste datele NA (Inițiere/Programată)
-    if((lbl==='Inițiere' || lbl==='Programată') && (val==='NA' || !val)) continue;
     if(!val){
       vh = (lbl==='Inițiere' || lbl==='Programată')
         ? '<span class="fv">NA</span>'
@@ -748,7 +746,6 @@ function openPanel(i, clickX, clickY){
     }
     else if(badge){ vh='<span class="fv"><span class="badge">'+val+'</span></span>'; }
     else if(lbl==='Notă'){
-      // Nota: transforma telefoanele in link-uri clickable inline
       vh='<span class="fv fv-note">'+linkifyPhones(val).replace(/\n/g,'<br>')+'</span>';
     }
     else{ vh='<span class="fv" data-val="'+val.replace(/"/g,'&quot;')+'">'+val.replace(/\n/g,'<br>')+'</span>'; }
