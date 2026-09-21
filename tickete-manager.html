@@ -277,12 +277,14 @@ function gCol(row, colIdx){
 
 function processData(raw){
   DATA=raw.filter(function(r){return Object.values(r).some(function(v){return v!=='' && v!==null;});}).map(function(r){
+    // Data initiere: coloana J (index 9) - are mereu data+ora
+    var dVal = g(r,'obj__objevents__last_date');
+    if(!dVal) dVal = gCol(r, 9); // Coloana J
+    var dFinal = cvDate(dVal) || 'NA';
     // Data programata: cauta dupa nume, fallback pe coloana AD (index 29)
     var dpVal = g(r,'date_prg');
     if(!dpVal) dpVal = gCol(r, 29);
     var dpFinal = cvDate(dpVal) || 'NA';
-    var dVal = g(r,'obj__objevents__last_date');
-    var dFinal = cvDate(dVal) || 'NA';
     return {t:g(r,'numar'),a:g(r,'obj__hexid'),b:g(r,'obj__client__denumire'),ob:g(r,'obj__name'),
       l:g(r,'obj__loc'),ad:g(r,'obj__address'),j:g(r,'obj__jud'),ty:g(r,'type'),
       d:dFinal, dp:dpFinal, n:g(r,'note')};
@@ -296,9 +298,38 @@ function processData(raw){
 }
 
 function cvDate(v){
-  if(!v) return '';
-  if(typeof v==='string'&&/^\d{2}\.\d{2}\.\d{4}$/.test(v)) return v;
-  if(typeof v==='number'&&v>0){ var d=new Date((v-1)*86400000+new Date(1900,0,1).getTime()); if(!isNaN(d)) return d.toLocaleDateString('ro-RO'); }
+  if(v===null || v===undefined || v==='') return '';
+  var pad = function(n){ return n<10?'0'+n:''+n; };
+  // String cu format dd.mm.yyyy sau dd.mm.yyyy hh:mm(:ss) - pastreaza asa cum e
+  if(typeof v==='string'){
+    var m = v.match(/^\s*(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*$/);
+    if(m){
+      var out = pad(parseInt(m[1]))+'.'+pad(parseInt(m[2]))+'.'+m[3];
+      if(m[4]) out += ' '+pad(parseInt(m[4]))+':'+m[5];
+      return out;
+    }
+    // Format ISO "2026-09-14T14:32:00" sau similar
+    var iso = new Date(v);
+    if(!isNaN(iso.getTime())){
+      var s = pad(iso.getDate())+'.'+pad(iso.getMonth()+1)+'.'+iso.getFullYear();
+      var h = iso.getHours(), mi = iso.getMinutes();
+      if(h || mi) s += ' '+pad(h)+':'+pad(mi);
+      return s;
+    }
+    return v.trim();
+  }
+  // Numar serial Excel (parte intreaga = zi, parte fractionala = ora)
+  if(typeof v==='number' && v>0){
+    var epoch = new Date(1900,0,1).getTime();
+    var d = new Date((v-1)*86400000 + epoch);
+    if(isNaN(d.getTime())) return '';
+    var out2 = pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear();
+    // Daca are parte fractionala (ora) -> adauga
+    if(v % 1 !== 0){
+      out2 += ' '+pad(d.getHours())+':'+pad(d.getMinutes());
+    }
+    return out2;
+  }
   return '';
 }
 
