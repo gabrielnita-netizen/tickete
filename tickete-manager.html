@@ -45,9 +45,11 @@ button:hover:not(:disabled){background:rgba(74,144,226,.1);border-color:var(--pr
 button.primary{background:var(--pr);color:#fff;border-color:var(--pr)}
 button.primary:hover:not(:disabled){background:#357abd}
 button:disabled{opacity:.5;cursor:not-allowed}
-.tw{background:var(--su);border-radius:8px;border:1px solid var(--br);overflow-x:auto}
+.tw{background:var(--su);border-radius:8px;border:1px solid var(--br);overflow:auto;max-height:calc(100vh - 240px);min-height:300px;position:relative}
+@media(max-width:720px){.tw{max-height:calc(100vh - 200px)}}
 table{width:100%;border-collapse:collapse;font-size:13px}
-thead{background:rgba(74,144,226,.05);position:sticky;top:0;z-index:5}
+thead{background:var(--su);position:sticky;top:0;z-index:5;box-shadow:0 2px 4px rgba(0,0,0,.08)}
+thead th{background:rgba(74,144,226,.08)}
 th{padding:10px 12px;text-align:left;font-weight:600;color:var(--pr);border-bottom:1px solid var(--br);white-space:nowrap}
 td{padding:10px 12px;border-bottom:1px solid var(--br)}
 tr:hover td{background:rgba(74,144,226,.04)}
