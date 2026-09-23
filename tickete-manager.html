@@ -161,14 +161,22 @@ tr:hover td{background:rgba(74,144,226,.04)}
 <!-- Contact editor modal -->
 <!-- Dialog configurare echipe -->
 <div class="modal-bg" id="teamsModal" style="z-index:500">
-  <div style="background:var(--su);border-radius:14px;width:100%;max-width:520px;padding:28px 26px">
+  <div style="background:var(--su);border-radius:14px;width:100%;max-width:560px;padding:28px 26px">
     <h2 style="font-size:19px;color:var(--pr);margin-bottom:8px">🎯 Configurare echipe</h2>
-    <p style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Introdu numele echipelor separate prin virgulă. Fiecare va primi o culoare distinctă. Poți lăsa gol dacă vrei să lucrezi fără echipe.</p>
-    <input type="text" id="teamsInput" placeholder="ex: Alex+Ion, Vio, Sebi+Radu" style="width:100%;padding:14px 16px;border:2px solid var(--br);border-radius:10px;background:var(--bg);color:var(--tx);font-family:inherit;font-size:15px;box-sizing:border-box;margin-bottom:14px">
-    <div id="teamsPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;min-height:34px"></div>
+    <p style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Adaugă câte o echipă apăsând Enter sau ➕. Fiecare primește o culoare distinctă.</p>
+    
+    <label style="display:block;font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Echipe curente:</label>
+    <div id="teamsPillsList" style="display:flex;flex-wrap:wrap;gap:8px;padding:12px;background:var(--bg);border:2px dashed var(--br);border-radius:10px;min-height:56px;margin-bottom:14px"></div>
+    
+    <label style="display:block;font-size:12px;font-weight:700;color:var(--t2);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px">Adaugă echipă nouă:</label>
+    <div style="display:flex;gap:8px;margin-bottom:20px">
+      <input type="text" id="teamNewInput" placeholder="ex: Alex+Ion" style="flex:1;padding:12px 14px;border:2px solid var(--br);border-radius:10px;background:var(--bg);color:var(--tx);font-family:inherit;font-size:15px;box-sizing:border-box">
+      <button onclick="addTeamPill()" id="addTeamBtn" style="background:#4caf50;color:#fff;border:none;border-radius:10px;padding:0 20px;font-size:20px;font-weight:700;cursor:pointer">+</button>
+    </div>
+
     <div style="display:flex;gap:10px">
       <button onclick="skipTeams()" style="flex:1;background:#eee;color:var(--tx);border:none;border-radius:10px;padding:12px 18px;font-size:14px;cursor:pointer;font-weight:600">⏭ Fără echipe</button>
-      <button onclick="confirmTeams()" class="primary" style="flex:2;background:var(--pr);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:15px;cursor:pointer;font-weight:700">✅ Continuă</button>
+      <button onclick="confirmTeamsFromPills()" class="primary" style="flex:2;background:var(--pr);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:15px;cursor:pointer;font-weight:700">✅ Continuă</button>
     </div>
   </div>
 </div>
@@ -262,48 +270,76 @@ function saveTeamsToStorage(){
   } catch(e){}
 }
 
+// Pastile echipe curente (temporare in dialog, salvate la Continua)
+var TEAMS_DRAFT = [];
+
 function showTeamsDialog(){
-  var input = document.getElementById('teamsInput');
-  // Precompleteaza cu ultimele echipe folosite
-  if(TEAMS.length > 0){
-    input.value = TEAMS.map(function(t){ return t.name; }).join(', ');
-  } else {
-    input.value = '';
-  }
-  updateTeamsPreview();
-  input.oninput = updateTeamsPreview;
+  TEAMS_DRAFT = TEAMS.slice(); // clona
+  renderTeamPills();
+  document.getElementById('teamNewInput').value = '';
   document.getElementById('teamsModal').className = 'modal-bg on';
-  setTimeout(function(){ input.focus(); }, 100);
+  // Enter in input = adaugare
+  var inp = document.getElementById('teamNewInput');
+  inp.onkeydown = function(e){ if(e.key === 'Enter'){ e.preventDefault(); addTeamPill(); } };
+  setTimeout(function(){ inp.focus(); }, 100);
 }
 
-function updateTeamsPreview(){
-  var val = document.getElementById('teamsInput').value.trim();
-  var names = val ? val.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
-  var html = '';
-  names.forEach(function(name, i){
-    var color = TEAM_COLORS[i % TEAM_COLORS.length];
-    html += '<span style="display:inline-flex;align-items:center;gap:6px;background:'+color+'22;border:1.5px solid '+color+';color:'+color+';border-radius:100px;padding:5px 12px;font-size:13px;font-weight:600"><span style="width:10px;height:10px;border-radius:50%;background:'+color+'"></span>'+name+'</span>';
+function renderTeamPills(){
+  var list = document.getElementById('teamsPillsList');
+  if(TEAMS_DRAFT.length === 0){
+    list.innerHTML = '<span style="color:var(--t2);font-size:13px;font-style:italic;padding:8px">Nicio echipă. Adaugă mai jos ↓</span>';
+    return;
+  }
+  list.innerHTML = TEAMS_DRAFT.map(function(t, i){
+    return '<span style="display:inline-flex;align-items:center;gap:8px;background:'+t.color+';color:#fff;border-radius:100px;padding:8px 6px 8px 14px;font-size:14px;font-weight:600">'+
+      '<span style="width:10px;height:10px;border-radius:50%;background:#fff"></span>'+
+      t.name+
+      '<button onclick="removeTeamPill('+i+')" style="background:rgba(255,255,255,.3);color:#fff;border:none;border-radius:50%;width:24px;height:24px;cursor:pointer;font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center">×</button>'+
+    '</span>';
+  }).join('');
+}
+
+function addTeamPill(){
+  var inp = document.getElementById('teamNewInput');
+  var name = inp.value.trim();
+  if(!name) return;
+  // Evita dublurile
+  if(TEAMS_DRAFT.some(function(t){ return t.name.toLowerCase() === name.toLowerCase(); })){
+    inp.value = '';
+    showStatus('❌ Echipa "'+name+'" există deja','err');
+    return;
+  }
+  // Pastreaza culoarea daca era in TEAMS original
+  var existing = TEAMS.find(function(t){ return t.name === name; });
+  var idx = TEAMS_DRAFT.length;
+  TEAMS_DRAFT.push({
+    id: existing ? existing.id : 'team_' + Date.now() + '_' + idx,
+    name: name,
+    color: existing ? existing.color : TEAM_COLORS[idx % TEAM_COLORS.length]
   });
-  document.getElementById('teamsPreview').innerHTML = html || '<span style="color:var(--t2);font-size:12px;font-style:italic">Preview echipe apare aici...</span>';
+  inp.value = '';
+  inp.focus();
+  renderTeamPills();
 }
 
-function confirmTeams(){
-  var val = document.getElementById('teamsInput').value.trim();
-  var names = val ? val.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
-  if(names.length === 0){
+function removeTeamPill(idx){
+  TEAMS_DRAFT.splice(idx, 1);
+  renderTeamPills();
+}
+
+function confirmTeamsFromPills(){
+  if(TEAMS_DRAFT.length === 0){
+    // Daca a scris ceva in input dar n-a apasat + , adauga-l automat
+    var pending = document.getElementById('teamNewInput').value.trim();
+    if(pending){
+      addTeamPill();
+    }
+  }
+  if(TEAMS_DRAFT.length === 0){
     skipTeams();
     return;
   }
-  // Pastreaza culorile echipelor cu acelasi nume
-  var newTeams = names.map(function(name, i){
-    var existing = TEAMS.find(function(t){ return t.name === name; });
-    return {
-      id: existing ? existing.id : 'team_' + Date.now() + '_' + i,
-      name: name,
-      color: existing ? existing.color : TEAM_COLORS[i % TEAM_COLORS.length]
-    };
-  });
-  TEAMS = newTeams;
+  TEAMS = TEAMS_DRAFT.slice();
   ACTIVE_TEAM_ID = TEAMS[0].id;
   // Curata asignari catre echipe care nu mai exista
   var validIds = {};
@@ -315,7 +351,11 @@ function confirmTeams(){
   document.getElementById('teamsModal').className = 'modal-bg';
   renderTeamsBar();
   if(DATA.length > 0) updateTable();
+  showStatus('✓ '+TEAMS.length+' echipe configurate','ok');
 }
+
+// Retrocompatibilitate cu numele vechi
+function confirmTeams(){ confirmTeamsFromPills(); }
 
 function skipTeams(){
   TEAMS = [];
