@@ -300,7 +300,26 @@ function processData(raw){
 function cvDate(v){
   if(v===null || v===undefined || v==='') return '';
   var pad = function(n){ return n<10?'0'+n:''+n; };
-  // String cu format dd.mm.yyyy sau dd.mm.yyyy hh:mm(:ss) - pastreaza asa cum e
+  // Date object din Excel
+  if(v instanceof Date){
+    if(isNaN(v.getTime())) return '';
+    var oi = pad(v.getDate())+'.'+pad(v.getMonth()+1)+'.'+v.getFullYear();
+    var hi = v.getHours(), mii = v.getMinutes();
+    if(hi || mii) oi += ' '+pad(hi)+':'+pad(mii);
+    return oi;
+  }
+  // String cu Excel serial numeric (poate avea virgula sau punct, separator mii)
+  if(typeof v==='string'){
+    var vt = v.trim().replace(/\s/g,'').replace(/,/g,'.');
+    // Elimina separator de mii daca exista: "46,276.34" -> "46276.34"
+    if(/^\d+\.\d+$/.test(vt) || /^\d+$/.test(vt)){
+      var n = parseFloat(vt);
+      if(!isNaN(n) && n > 0){
+        v = n; // trece pe branch de numar
+      }
+    }
+  }
+  // String cu format dd.mm.yyyy sau dd.mm.yyyy hh:mm
   if(typeof v==='string'){
     var m = v.match(/^\s*(\d{1,2})[.\/-](\d{1,2})[.\/-](\d{4})(?:\s+(\d{1,2}):(\d{2})(?::(\d{2}))?)?\s*$/);
     if(m){
@@ -308,25 +327,23 @@ function cvDate(v){
       if(m[4]) out += ' '+pad(parseInt(m[4]))+':'+m[5];
       return out;
     }
-    // Format ISO "2026-09-14T14:32:00" sau similar
+    // Format ISO
     var iso = new Date(v);
-    if(!isNaN(iso.getTime())){
-      var s = pad(iso.getDate())+'.'+pad(iso.getMonth()+1)+'.'+iso.getFullYear();
+    if(!isNaN(iso.getTime()) && iso.getFullYear() > 1970 && iso.getFullYear() < 2100){
+      var so = pad(iso.getDate())+'.'+pad(iso.getMonth()+1)+'.'+iso.getFullYear();
       var h = iso.getHours(), mi = iso.getMinutes();
-      if(h || mi) s += ' '+pad(h)+':'+pad(mi);
-      return s;
+      if(h || mi) so += ' '+pad(h)+':'+pad(mi);
+      return so;
     }
     return v.trim();
   }
-  // Numar serial Excel (parte intreaga = zi, parte fractionala = ora)
-  if(typeof v==='number' && v>0){
-    var epoch = new Date(1900,0,1).getTime();
-    var d = new Date((v-1)*86400000 + epoch);
+  // Numar serial Excel (formula standard cu offset 25569 = zilele intre 1900-01-01 si 1970-01-01)
+  if(typeof v==='number' && v>0 && v<100000){
+    var d = new Date(Math.round((v - 25569) * 86400 * 1000));
     if(isNaN(d.getTime())) return '';
-    var out2 = pad(d.getDate())+'.'+pad(d.getMonth()+1)+'.'+d.getFullYear();
-    // Daca are parte fractionala (ora) -> adauga
+    var out2 = pad(d.getUTCDate())+'.'+pad(d.getUTCMonth()+1)+'.'+d.getUTCFullYear();
     if(v % 1 !== 0){
-      out2 += ' '+pad(d.getHours())+':'+pad(d.getMinutes());
+      out2 += ' '+pad(d.getUTCHours())+':'+pad(d.getUTCMinutes());
     }
     return out2;
   }
