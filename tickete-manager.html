@@ -100,8 +100,9 @@ tr:hover td{background:rgba(74,144,226,.04)}
   </div>
 
   <div id="statsArea" style="display:none">
-    <div class="grid3">
+    <div class="grid3" style="grid-template-columns:repeat(4,1fr)">
       <div class="sc"><div class="sv" id="cTotal">0</div><div class="sl">Total Tickete</div></div>
+      <div class="sc" id="cSelectedCard" style="border-color:#4caf50"><div class="sv" id="cSelected" style="color:#4caf50">0</div><div class="sl">Selectate</div></div>
       <div class="sc"><div class="sv" id="cConturi">0</div><div class="sl">Conturi</div></div>
       <div class="sc"><div class="sv" id="cLoc">0</div><div class="sl">Localități</div></div>
     </div>
@@ -926,6 +927,21 @@ function updateSelBar(){
   var bar = document.getElementById('selBar');
   bar.className = count > 0 ? 'sel-bar on' : 'sel-bar';
   document.getElementById('selCount').textContent = count + (count===1?' ticket selectat':' tickete selectate');
+  // Actualizeaza si cardul din pagina principala
+  var cSel = document.getElementById('cSelected');
+  if(cSel) cSel.textContent = count;
+  var cSelCard = document.getElementById('cSelectedCard');
+  if(cSelCard) cSelCard.style.opacity = count > 0 ? '1' : '.5';
+  // Actualizeaza si titlul hartii daca e deschisa
+  var mapCount = document.getElementById('map-count');
+  if(mapCount && mapCount.textContent){
+    // Pastreaza numarul de tickete din harta + adauga selectate
+    var totalOnMap = mapCount.textContent.match(/^(\d+)/);
+    if(totalOnMap){
+      var totalNum = totalOnMap[1];
+      mapCount.innerHTML = totalNum + ' tickete · <span style="color:#4caf50;font-weight:600">'+count+' selectate</span>';
+    }
+  }
 }
 
 function clearSelection(){
@@ -982,7 +998,13 @@ function openMap(){
   if(!DATA.length){ return; }
   var src = (typeof filteredData !== 'undefined' && filteredData.length >= 0) ? filteredData : DATA;
   if(!src.length) src = DATA;
-  document.getElementById('map-count').textContent = src.length + ' tickete';
+  var mapSelCount = Object.keys(SELECTED).length;
+  var mapCountEl = document.getElementById('map-count');
+  if(mapSelCount > 0){
+    mapCountEl.innerHTML = src.length + ' tickete · <span style="color:#4caf50;font-weight:600">'+mapSelCount+' selectate</span>';
+  } else {
+    mapCountEl.textContent = src.length + ' tickete';
+  }
   document.getElementById('mapModal').className = 'modal-bg on';
   document.getElementById('map-loading').style.display = 'block';
   document.getElementById('map-loading-text').textContent = 'Se geocodifică adresele (0/' + src.length + ')...';
