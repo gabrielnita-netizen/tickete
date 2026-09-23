@@ -117,6 +117,13 @@ tr:hover td{background:rgba(74,144,226,.04)}
       <button onclick="testGeocode()" style="background:#3f51b5;color:#fff;border:none">🔬 Test geocodare</button>
       <button onclick="clearGeoCache()" style="background:#666;color:#fff;border:none">📍 Reset coordonate</button>
       <button onclick="resetData()" style="background:#e53935;color:#fff;border:none;font-weight:600">🗑 Șterge tot</button>
+      <!-- Butoane selecție - apar doar cand exista tickete selectate -->
+      <span id="selInlineWrap" style="display:none;gap:12px;align-items:center;padding-left:14px;border-left:2px solid var(--br)">
+        <span id="selInlineCount" style="color:#4caf50;font-weight:700;font-size:13px"></span>
+        <button onclick="copySelection()" style="background:#fff;color:var(--tx);border:1px solid var(--br)">📋 Copiază Listă</button>
+        <button onclick="sendSelectionWA()" style="background:#25d366;color:#fff;border:none;font-weight:600">💬 WhatsApp</button>
+        <button onclick="clearSelection()" style="background:#eee;color:#666;border:1px solid var(--br)">✕ Golește</button>
+      </span>
     </div>
     <div class="tw"><table>
       <thead><tr><th style="width:40px"><input type="checkbox" id="selectAllChk" style="cursor:pointer;width:18px;height:18px"></th><th>Ticket</th><th>Account</th><th>Beneficiara</th><th>Obiectiv</th><th>Localitate</th><th>Tip</th><th>Data initiere</th><th>Data programata</th></tr></thead>
@@ -192,13 +199,7 @@ tr:hover td{background:rgba(74,144,226,.04)}
 </div>
 
 
-<!-- Selection Bar -->
-<div class="sel-bar" id="selBar">
-  <span id="selCount">0 tickete selectate</span>
-  <button class="sel-clear" onclick="clearSelection()">✕ Golește</button>
-  <button onclick="copySelection()">📋 Copiază Listă</button>
-  <button style="background:#25D366;color:#fff" onclick="sendSelectionWA()">💬 WhatsApp</button>
-</div>
+<!-- Bara jos eliminata - butoanele sunt in bara de sus -->
 
 <script>
 var DATA=[], activeType=null, activeLoc=null;
@@ -804,9 +805,9 @@ function resetData(){
   // Ascunde UI-uri de tickete
   document.getElementById('statsArea').style.display='none';
   document.getElementById('uploadZone').style.display='block';
-  // Golire bara selectii
-  var selBar = document.getElementById('selBar');
-  if(selBar) selBar.style.display = 'none';
+  // Golire bara selectii inline
+  var selWrap = document.getElementById('selInlineWrap');
+  if(selWrap) selWrap.style.display = 'none';
   // Reset checkbox header
   var selAll = document.getElementById('selectAllChk');
   if(selAll){ selAll.checked = false; selAll.indeterminate = false; }
@@ -924,22 +925,23 @@ function toggleSelect(ticketId, btn){
 
 function updateSelBar(){
   var count = Object.keys(SELECTED).length;
-  var bar = document.getElementById('selBar');
-  bar.className = count > 0 ? 'sel-bar on' : 'sel-bar';
-  document.getElementById('selCount').textContent = count + (count===1?' ticket selectat':' tickete selectate');
-  // Actualizeaza si cardul din pagina principala
+  // Bara inline din controls
+  var wrap = document.getElementById('selInlineWrap');
+  if(wrap) wrap.style.display = count > 0 ? 'inline-flex' : 'none';
+  var inlineCount = document.getElementById('selInlineCount');
+  if(inlineCount) inlineCount.textContent = count + (count===1?' selectat:':' selectate:');
+  // Cardul din pagina principala
   var cSel = document.getElementById('cSelected');
   if(cSel) cSel.textContent = count;
   var cSelCard = document.getElementById('cSelectedCard');
   if(cSelCard) cSelCard.style.opacity = count > 0 ? '1' : '.5';
-  // Actualizeaza si titlul hartii daca e deschisa
+  // Titlul hartii daca e deschisa
   var mapCount = document.getElementById('map-count');
   if(mapCount && mapCount.textContent){
-    // Pastreaza numarul de tickete din harta + adauga selectate
     var totalOnMap = mapCount.textContent.match(/^(\d+)/);
     if(totalOnMap){
       var totalNum = totalOnMap[1];
-      mapCount.innerHTML = totalNum + ' tickete · <span style="color:#4caf50;font-weight:600">'+count+' selectate</span>';
+      mapCount.innerHTML = totalNum + ' tickete' + (count>0 ? ' · <span style="color:#4caf50;font-weight:600">'+count+' selectate</span>' : '');
     }
   }
 }
@@ -976,10 +978,9 @@ function copySelection(){
   if(!text){ return; }
   if(navigator.clipboard && navigator.clipboard.writeText){
     navigator.clipboard.writeText(text).then(function(){
-      var btn = document.querySelector('.sel-bar button:nth-child(3)');
-      if(btn){ var orig=btn.textContent; btn.textContent='✓ Copiat!'; setTimeout(function(){btn.textContent=orig;},1500); }
+      showStatus('✓ Listă copiată în clipboard','ok');
     });
-  } else { fb(text); }
+  } else { fb(text); showStatus('✓ Listă copiată','ok'); }
 }
 
 function sendSelectionWA(){
