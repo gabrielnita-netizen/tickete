@@ -118,7 +118,7 @@ tr:hover td{background:rgba(74,144,226,.04)}
       <button onclick="resetData()" style="background:#e53935;color:#fff;border:none;font-weight:600">🗑 Șterge tot</button>
     </div>
     <div class="tw"><table>
-      <thead><tr><th style="width:40px"><input type="checkbox" id="selectAllChk" style="cursor:pointer;width:18px;height:18px"></th><th>Ticket</th><th>Account</th><th>Beneficiara</th><th>Localitate</th><th>Tip</th><th>Data initiere</th><th>Data programata</th></tr></thead>
+      <thead><tr><th style="width:40px"><input type="checkbox" id="selectAllChk" style="cursor:pointer;width:18px;height:18px"></th><th>Ticket</th><th>Account</th><th>Beneficiara</th><th>Obiectiv</th><th>Localitate</th><th>Tip</th><th>Data initiere</th><th>Data programata</th></tr></thead>
       <tbody id="tbody"></tbody>
     </table></div>
   </div>
@@ -629,11 +629,12 @@ function updateTable(){
       '<td style="text-align:center"><input type="checkbox" class="row-check" data-tid="'+s(r.t)+'"'+(sel?' checked':'')+' style="width:18px;height:18px;cursor:pointer;accent-color:#4caf50"></td>'+
       '<td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span>'+extraIcon+' <button class="edit-contact-btn" data-idx="'+i+'" title="Editează contacte/info" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 6px;opacity:.6;border-radius:4px">✏️</button></td>'+
       '<td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td>'+
+      '<td class="cp">'+s(r.ob)+'</td>'+
       '<td class="cp">'+s(r.l)+'</td><td class="cp">'+s(r.ty)+'</td>'+
       '<td class="cp">'+s(r.d)+'</td><td class="cp">'+s(r.dp)+'</td>'+
     '</tr>';
   }).join('');
-  document.getElementById('tbody').innerHTML=rows||'<tr><td colspan="8" class="empty">Nu există tickete pentru filtrul selectat</td></tr>';
+  document.getElementById('tbody').innerHTML=rows||'<tr><td colspan="9" class="empty">Nu există tickete pentru filtrul selectat</td></tr>';
   document.querySelectorAll('.tlink').forEach(function(el){ el.onclick=function(){ openPanel(parseInt(el.getAttribute('data-idx'))); }; });
   document.querySelectorAll('.edit-contact-btn').forEach(function(el){ el.onclick=function(e){ e.stopPropagation(); openContactEditor(parseInt(el.getAttribute('data-idx'))); }; });
   document.querySelectorAll('td.cp').forEach(function(el){ el.onclick=function(){ cp(el.textContent||el.innerText,el); }; });
@@ -1037,7 +1038,7 @@ function geocodeAll(src){
     listHtml += '<div class="map-list-item" data-idx="'+i+'" style="display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--br);font-size:12px;cursor:pointer">'+
       '<span style="background:'+color+';color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">'+(i+1)+'</span>'+
       '<div style="flex:1;min-width:0">'+
-        '<div style="font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s(r.t)+' — '+s(r.b)+'</div>'+
+        '<div style="font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s(r.t)+' — '+(s(r.ob)||s(r.b))+'</div>'+
         '<div style="color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s(r.ad)+', '+s(r.l)+'</div>'+
       '</div>'+
       '<div style="display:flex;gap:4px;flex-shrink:0;align-items:center">'+
@@ -1099,7 +1100,7 @@ function addMarker(i,r,coords,color,bounds){
   var isSelected = SELECTED[tid] ? true : false;
   var popup='<div style="font-size:12px;min-width:210px">'+
     '<div style="font-weight:700;margin-bottom:4px">'+s(r.t)+'</div>'+
-    '<div style="margin-bottom:2px"><b>'+s(r.b)+'</b></div>'+
+    '<div style="margin-bottom:2px"><b>'+(s(r.ob)||s(r.b))+'</b></div>'+
     '<div style="color:#666;margin-bottom:4px">'+s(r.ad)+', '+s(r.l)+'</div>'+
     '<div style="margin-bottom:8px"><span style="background:#e8f0fe;color:#4285f4;border-radius:3px;padding:2px 6px">'+s(r.ty)+'</span></div>'+
     '<div style="display:flex;gap:6px;align-items:center">'+
