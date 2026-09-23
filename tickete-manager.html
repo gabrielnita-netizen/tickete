@@ -108,12 +108,15 @@ tr:hover td{background:rgba(74,144,226,.04)}
       <div class="sc"><div class="sv" id="cConturi">0</div><div class="sl">Conturi</div></div>
       <div class="sc"><div class="sv" id="cLoc">0</div><div class="sl">Localități</div></div>
     </div>
+    <!-- Bara tab-uri echipe - active dupa configurare -->
+    <div id="teamsBar" style="display:none;background:var(--su);border:1px solid var(--br);border-radius:10px;padding:12px 14px;margin-bottom:16px;align-items:center;gap:10px;flex-wrap:wrap"></div>
     <div class="sec"><div class="sec-title">🏙 Localități — apasă pentru filtrare</div><div class="cards" id="locGrid"></div></div>
     <div class="sec"><div class="sec-title">🏷 Tipuri — apasă pentru filtrare</div><div class="cards" id="typeGrid"></div></div>
     <div class="fbar" id="fbar"><span id="fbar-text"></span><button onclick="clearFilters()">✕ Elimină filtru</button></div>
     <div id="geoProgress" style="display:none;background:rgba(74,144,226,.1);border:1px solid rgba(74,144,226,.3);border-radius:8px;padding:10px 14px;margin-bottom:14px;font-size:13px;color:#4a90e2;font-weight:500">📍 Geocodare adrese...</div>
     <div class="controls">
       <button class="primary" id="shareBtn" onclick="shareLink()">💬 WhatsApp Link</button>
+      <button id="teamLinksBtn" onclick="openTeamLinks()" style="background:#7c4dff;color:#fff;border:none;font-weight:600;display:none">🎯 Linkuri per echipă</button>
       <button class="primary" onclick="openMap()">🗺️ Hartă</button>
       <button onclick="downloadCSV()">📥 CSV</button>
       <button onclick="testGeocode()" style="background:#3f51b5;color:#fff;border:none">🔬 Test geocodare</button>
@@ -156,6 +159,32 @@ tr:hover td{background:rgba(74,144,226,.04)}
 
 <!-- Map Modal -->
 <!-- Contact editor modal -->
+<!-- Dialog configurare echipe -->
+<div class="modal-bg" id="teamsModal" style="z-index:500">
+  <div style="background:var(--su);border-radius:14px;width:100%;max-width:520px;padding:28px 26px">
+    <h2 style="font-size:19px;color:var(--pr);margin-bottom:8px">🎯 Configurare echipe</h2>
+    <p style="font-size:13px;color:var(--t2);margin-bottom:18px;line-height:1.5">Introdu numele echipelor separate prin virgulă. Fiecare va primi o culoare distinctă. Poți lăsa gol dacă vrei să lucrezi fără echipe.</p>
+    <input type="text" id="teamsInput" placeholder="ex: Alex+Ion, Vio, Sebi+Radu" style="width:100%;padding:14px 16px;border:2px solid var(--br);border-radius:10px;background:var(--bg);color:var(--tx);font-family:inherit;font-size:15px;box-sizing:border-box;margin-bottom:14px">
+    <div id="teamsPreview" style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:18px;min-height:34px"></div>
+    <div style="display:flex;gap:10px">
+      <button onclick="skipTeams()" style="flex:1;background:#eee;color:var(--tx);border:none;border-radius:10px;padding:12px 18px;font-size:14px;cursor:pointer;font-weight:600">⏭ Fără echipe</button>
+      <button onclick="confirmTeams()" class="primary" style="flex:2;background:var(--pr);color:#fff;border:none;border-radius:10px;padding:12px 22px;font-size:15px;cursor:pointer;font-weight:700">✅ Continuă</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal linkuri per echipa -->
+<div class="modal-bg" id="teamLinksModal" style="z-index:450">
+  <div style="background:var(--su);border-radius:14px;width:100%;max-width:640px;max-height:88vh;overflow-y:auto;padding:28px 26px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h2 style="font-size:18px;color:var(--pr)">💬 Linkuri per echipă</h2>
+      <button onclick="closeTeamLinks()" style="background:none;border:none;font-size:20px;cursor:pointer;color:var(--t2);padding:2px 6px">✕</button>
+    </div>
+    <p style="font-size:13px;color:var(--t2);margin-bottom:18px">Câte un link WhatsApp pentru fiecare echipă. Trimite pe grupul echipei respective.</p>
+    <div id="teamLinksList"></div>
+  </div>
+</div>
+
 <div class="modal-bg" id="contactModal" style="z-index:400">
   <div style="background:var(--su);border-radius:12px;width:100%;max-width:600px;max-height:92vh;display:flex;flex-direction:column;overflow:hidden">
     <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-bottom:1px solid var(--br);flex-shrink:0">
@@ -205,7 +234,215 @@ tr:hover td{background:rgba(74,144,226,.04)}
 
 <script>
 var DATA=[], activeType=null, activeLoc=null;
-var SELECTED = {}; // id -> ticket object
+var SELECTED = {}; // id -> ticket object (retrocompatibilitate)
+
+// ============ SISTEM ECHIPE ============
+var TEAMS = []; // [{id, name, color}]
+var ACTIVE_TEAM_ID = null;
+var TEAM_ASSIGNMENTS = {}; // {ticketNr: teamId}
+var TEAM_COLORS = ['#e74c3c','#27ae60','#3498db','#f39c12','#9b59b6','#16a085','#e67e22','#c0392b','#2c3e50','#d35400'];
+
+function loadTeamsFromStorage(){
+  try {
+    var raw = localStorage.getItem('teams_config');
+    if(raw){
+      var cfg = JSON.parse(raw);
+      TEAMS = cfg.teams || [];
+      ACTIVE_TEAM_ID = TEAMS[0] ? TEAMS[0].id : null;
+    }
+    var rawA = localStorage.getItem('team_assignments');
+    if(rawA) TEAM_ASSIGNMENTS = JSON.parse(rawA) || {};
+  } catch(e){}
+}
+
+function saveTeamsToStorage(){
+  try {
+    localStorage.setItem('teams_config', JSON.stringify({teams: TEAMS}));
+    localStorage.setItem('team_assignments', JSON.stringify(TEAM_ASSIGNMENTS));
+  } catch(e){}
+}
+
+function showTeamsDialog(){
+  var input = document.getElementById('teamsInput');
+  // Precompleteaza cu ultimele echipe folosite
+  if(TEAMS.length > 0){
+    input.value = TEAMS.map(function(t){ return t.name; }).join(', ');
+  } else {
+    input.value = '';
+  }
+  updateTeamsPreview();
+  input.oninput = updateTeamsPreview;
+  document.getElementById('teamsModal').className = 'modal-bg on';
+  setTimeout(function(){ input.focus(); }, 100);
+}
+
+function updateTeamsPreview(){
+  var val = document.getElementById('teamsInput').value.trim();
+  var names = val ? val.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
+  var html = '';
+  names.forEach(function(name, i){
+    var color = TEAM_COLORS[i % TEAM_COLORS.length];
+    html += '<span style="display:inline-flex;align-items:center;gap:6px;background:'+color+'22;border:1.5px solid '+color+';color:'+color+';border-radius:100px;padding:5px 12px;font-size:13px;font-weight:600"><span style="width:10px;height:10px;border-radius:50%;background:'+color+'"></span>'+name+'</span>';
+  });
+  document.getElementById('teamsPreview').innerHTML = html || '<span style="color:var(--t2);font-size:12px;font-style:italic">Preview echipe apare aici...</span>';
+}
+
+function confirmTeams(){
+  var val = document.getElementById('teamsInput').value.trim();
+  var names = val ? val.split(',').map(function(s){ return s.trim(); }).filter(Boolean) : [];
+  if(names.length === 0){
+    skipTeams();
+    return;
+  }
+  // Pastreaza culorile echipelor cu acelasi nume
+  var newTeams = names.map(function(name, i){
+    var existing = TEAMS.find(function(t){ return t.name === name; });
+    return {
+      id: existing ? existing.id : 'team_' + Date.now() + '_' + i,
+      name: name,
+      color: existing ? existing.color : TEAM_COLORS[i % TEAM_COLORS.length]
+    };
+  });
+  TEAMS = newTeams;
+  ACTIVE_TEAM_ID = TEAMS[0].id;
+  // Curata asignari catre echipe care nu mai exista
+  var validIds = {};
+  TEAMS.forEach(function(t){ validIds[t.id] = true; });
+  Object.keys(TEAM_ASSIGNMENTS).forEach(function(k){
+    if(!validIds[TEAM_ASSIGNMENTS[k]]) delete TEAM_ASSIGNMENTS[k];
+  });
+  saveTeamsToStorage();
+  document.getElementById('teamsModal').className = 'modal-bg';
+  renderTeamsBar();
+  if(DATA.length > 0) updateTable();
+}
+
+function skipTeams(){
+  TEAMS = [];
+  ACTIVE_TEAM_ID = null;
+  TEAM_ASSIGNMENTS = {};
+  saveTeamsToStorage();
+  document.getElementById('teamsModal').className = 'modal-bg';
+  renderTeamsBar();
+  if(DATA.length > 0) updateTable();
+}
+
+function renderTeamsBar(){
+  var bar = document.getElementById('teamsBar');
+  if(!bar) return;
+  if(TEAMS.length === 0){
+    bar.style.display = 'none';
+    document.getElementById('teamLinksBtn').style.display = 'none';
+    return;
+  }
+  bar.style.display = 'flex';
+  document.getElementById('teamLinksBtn').style.display = 'inline-block';
+  // Count per team
+  var counts = {};
+  TEAMS.forEach(function(t){ counts[t.id] = 0; });
+  Object.values(TEAM_ASSIGNMENTS).forEach(function(tid){ if(counts[tid]!==undefined) counts[tid]++; });
+  var html = '<span style="font-size:12px;color:var(--t2);font-weight:600;text-transform:uppercase;letter-spacing:.5px">Echipa activă:</span>';
+  TEAMS.forEach(function(t){
+    var isActive = t.id === ACTIVE_TEAM_ID;
+    html += '<button class="team-tab" data-tid="'+t.id+'" style="display:inline-flex;align-items:center;gap:8px;background:'+(isActive?t.color:'transparent')+';color:'+(isActive?'#fff':t.color)+';border:2px solid '+t.color+';border-radius:100px;padding:7px 14px;font-size:13px;font-weight:700;cursor:pointer">'+
+      '<span style="width:10px;height:10px;border-radius:50%;background:'+(isActive?'#fff':t.color)+'"></span>'+
+      t.name+' <span style="background:'+(isActive?'rgba(255,255,255,.25)':t.color+'22')+';padding:2px 8px;border-radius:100px;font-size:11px;min-width:20px;text-align:center">'+counts[t.id]+'</span>'+
+    '</button>';
+  });
+  html += '<button onclick="showTeamsDialog()" style="margin-left:auto;background:none;border:1px solid var(--br);border-radius:100px;padding:7px 14px;font-size:12px;cursor:pointer;color:var(--t2);font-weight:600">⚙️ Editează echipe</button>';
+  bar.innerHTML = html;
+  bar.querySelectorAll('.team-tab').forEach(function(btn){
+    btn.onclick = function(){
+      ACTIVE_TEAM_ID = btn.getAttribute('data-tid');
+      renderTeamsBar();
+    };
+  });
+}
+
+function assignTicketToActiveTeam(ticketNr){
+  if(!ACTIVE_TEAM_ID) return;
+  if(TEAM_ASSIGNMENTS[ticketNr] === ACTIVE_TEAM_ID){
+    // Toggle off
+    delete TEAM_ASSIGNMENTS[ticketNr];
+  } else {
+    TEAM_ASSIGNMENTS[ticketNr] = ACTIVE_TEAM_ID;
+  }
+  saveTeamsToStorage();
+  renderTeamsBar();
+  updateTable();
+}
+
+function getTicketTeam(ticketNr){
+  var tid = TEAM_ASSIGNMENTS[ticketNr];
+  if(!tid) return null;
+  return TEAMS.find(function(t){ return t.id === tid; });
+}
+
+// ============ LINKURI PER ECHIPA ============
+function openTeamLinks(){
+  if(TEAMS.length === 0){ showStatus('❌ Nu ai echipe configurate','err'); return; }
+  var listEl = document.getElementById('teamLinksList');
+  listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t2)">⏳ Se generează linkuri...</div>';
+  document.getElementById('teamLinksModal').className = 'modal-bg on';
+  var teamsWithTickets = TEAMS.filter(function(t){
+    return Object.values(TEAM_ASSIGNMENTS).indexOf(t.id) !== -1;
+  });
+  if(teamsWithTickets.length === 0){
+    listEl.innerHTML = '<div style="text-align:center;padding:20px;color:var(--t2)">Nu ai selectat tickete pentru nicio echipă</div>';
+    return;
+  }
+  var linkResults = {};
+  var done = 0;
+  teamsWithTickets.forEach(function(t){
+    var teamTickets = DATA.filter(function(r){ return TEAM_ASSIGNMENTS[s(r.t)] === t.id; });
+    generateShortLinkForData(teamTickets, function(link){
+      linkResults[t.id] = link;
+      done++;
+      if(done === teamsWithTickets.length){
+        renderTeamLinks(teamsWithTickets, linkResults);
+      }
+    });
+  });
+}
+
+function renderTeamLinks(teams, links){
+  var html = '';
+  teams.forEach(function(t){
+    var count = Object.values(TEAM_ASSIGNMENTS).filter(function(tid){ return tid===t.id; }).length;
+    var link = links[t.id] || '';
+    html += '<div style="border:2px solid '+t.color+';border-radius:12px;padding:14px 16px;margin-bottom:12px;background:'+t.color+'0d">'+
+      '<div style="display:flex;align-items:center;gap:10px;margin-bottom:10px">'+
+        '<span style="width:14px;height:14px;border-radius:50%;background:'+t.color+'"></span>'+
+        '<strong style="color:'+t.color+';font-size:15px">'+t.name+'</strong>'+
+        '<span style="background:'+t.color+'22;color:'+t.color+';padding:2px 10px;border-radius:100px;font-size:12px;font-weight:700">'+count+' tickete</span>'+
+      '</div>'+
+      '<input type="text" value="'+link+'" readonly style="width:100%;padding:8px 10px;border:1px solid var(--br);border-radius:6px;background:var(--bg);color:var(--tx);font-size:12px;font-family:monospace;box-sizing:border-box;margin-bottom:8px">'+
+      '<div style="display:flex;gap:8px">'+
+        '<button onclick="copyText(\''+link+'\', this)" style="flex:1;background:var(--su);border:1px solid var(--br);border-radius:6px;padding:8px;font-size:13px;cursor:pointer;font-weight:600">📋 Copiază</button>'+
+        '<button onclick="waLink(\''+link+'\')" style="flex:1;background:#25d366;color:#fff;border:none;border-radius:6px;padding:8px;font-size:13px;cursor:pointer;font-weight:700">💬 WhatsApp</button>'+
+      '</div>'+
+    '</div>';
+  });
+  document.getElementById('teamLinksList').innerHTML = html;
+}
+
+function closeTeamLinks(){
+  document.getElementById('teamLinksModal').className = 'modal-bg';
+}
+
+function copyText(txt, btn){
+  if(navigator.clipboard){ navigator.clipboard.writeText(txt); }
+  var orig = btn.textContent;
+  btn.textContent = '✓ Copiat!';
+  setTimeout(function(){ btn.textContent = orig; }, 1200);
+}
+
+function waLink(link){
+  window.open('https://wa.me/?text='+encodeURIComponent('🎫 Raport tickete:\n'+link),'_blank');
+}
+
+document.getElementById('teamLinksModal').onclick = function(e){ if(e.target===this) closeTeamLinks(); };
+document.getElementById('teamsModal').onclick = function(e){ if(e.target===this && TEAMS.length > 0) document.getElementById('teamsModal').className='modal-bg'; };
 var SCRIPT_URL = 'https://script.google.com/macros/s/AKfycbxG6PtyTahCGXBZpnKzhn45Man-magAfg85CfgGu-mWSTBqoXUhfqL13LT5-ppBZWqU/exec';
 var BASE_URL = 'https://gabrielnita-netizen.github.io/tickete/raport-v46.html';
 var FIREBASE_URL = 'https://tickete-jud-default-rtdb.europe-west1.firebasedatabase.app';
@@ -237,6 +474,9 @@ function openPanel(i){
 }
 
 // Upload
+// Init: incarca echipe salvate
+loadTeamsFromStorage();
+
 var uz=document.getElementById('uploadZone'), fi=document.getElementById('fileInput');
 uz.onclick=function(){ fi.click(); };
 uz.ondragover=function(e){ e.preventDefault(); uz.classList.add('drag-over'); };
@@ -299,6 +539,8 @@ function processData(raw){
   document.getElementById('statsArea').style.display='block';
   document.getElementById('uploadZone').style.display='none';
   setTimeout(function(){ runGeocoding(function(){ showStatus('✓ Geocodare completă','ok'); }); }, 100);
+  // Afiseaza dialog echipe la fiecare incarcare Excel (precompletat cu ultimele echipe)
+  setTimeout(function(){ showTeamsDialog(); }, 300);
 }
 
 function cvDate(v){
@@ -626,11 +868,13 @@ function updateTable(){
   var src=filtered();
   var rows=src.map(function(r){
     var i=DATA.indexOf(r);
-    var sel = SELECTED[s(r.t)] ? true : false;
+    var team = getTicketTeam(s(r.t));
+    var rowBg = team ? 'background:'+team.color+'11' : '';
     var hasExtra = (r.contacts && r.contacts.length > 0) || (r.info && r.info.trim());
     var extraIcon = hasExtra ? '<span style="color:#4caf50;margin-left:4px" title="Are contacte/info">📞</span>' : '';
-    return '<tr'+(sel?' style="background:rgba(76,175,80,.08)"':'')+'>'+
-      '<td style="text-align:center"><input type="checkbox" class="row-check" data-tid="'+s(r.t)+'"'+(sel?' checked':'')+' style="width:18px;height:18px;cursor:pointer;accent-color:#4caf50"></td>'+
+    var teamDot = team ? '<span title="'+team.name+'" style="display:inline-block;width:14px;height:14px;border-radius:50%;background:'+team.color+';margin-right:4px;vertical-align:middle;box-shadow:0 0 0 2px '+team.color+'33"></span>' : '';
+    return '<tr'+(rowBg?' style="'+rowBg+'"':'')+'>'+
+      '<td style="text-align:center">'+teamDot+'<input type="checkbox" class="row-check" data-tid="'+s(r.t)+'"'+(team?' checked':'')+' style="width:18px;height:18px;cursor:pointer;accent-color:'+(team?team.color:'#4caf50')+'"></td>'+
       '<td><span class="tlink" data-idx="'+i+'">'+s(r.t)+'</span>'+extraIcon+' <button class="edit-contact-btn" data-idx="'+i+'" title="Editează contacte/info" style="background:none;border:none;cursor:pointer;font-size:14px;padding:2px 6px;opacity:.6;border-radius:4px">✏️</button></td>'+
       '<td class="cp">'+s(r.a)+'</td><td class="cp">'+s(r.b)+'</td>'+
       '<td class="cp">'+s(r.ob)+'</td>'+
@@ -643,7 +887,14 @@ function updateTable(){
   document.querySelectorAll('.edit-contact-btn').forEach(function(el){ el.onclick=function(e){ e.stopPropagation(); openContactEditor(parseInt(el.getAttribute('data-idx'))); }; });
   document.querySelectorAll('td.cp').forEach(function(el){ el.onclick=function(){ cp(el.textContent||el.innerText,el); }; });
   document.querySelectorAll('.row-check').forEach(function(chk){
-    chk.onclick=function(e){ e.stopPropagation(); toggleSelectRow(chk.getAttribute('data-tid'), chk); };
+    chk.onclick=function(e){
+      e.stopPropagation();
+      if(TEAMS.length > 0 && ACTIVE_TEAM_ID){
+        assignTicketToActiveTeam(chk.getAttribute('data-tid'));
+      } else {
+        toggleSelectRow(chk.getAttribute('data-tid'), chk);
+      }
+    };
   });
   updateSelectAllChk();
   var parts=[]; if(activeType) parts.push('Tip: '+activeType); if(activeLoc) parts.push('Localitate: '+activeLoc);
@@ -724,6 +975,45 @@ function genShortCode(dataToShare){
   return jud + n + d + rnd;
 }
 
+function adaptTicketForShare(r){
+  var obj = {
+    t: s(r.numar || r.t),
+    a: s(r.obj__hexid || r.a),
+    b: s(r.obj__client__denumire || r.b),
+    ob: s(r.obj__name || r.ob),
+    l: s(r.obj__loc || r.l),
+    ad: s(r.obj__address || r.ad),
+    j: s(r.obj__jud || r.j),
+    ty: s(r.type || r.ty),
+    d: s(r.obj__objevents__last_date || r.d),
+    dp: s(r.date_prg || r.dp),
+    n: s(r.note || r.n)
+  };
+  if(r.lat && r.lng){ obj.lat = r.lat; obj.lng = r.lng; }
+  if(r.contacts && r.contacts.length){ obj.contacts = r.contacts; }
+  if(r.info) obj.info = r.info;
+  return obj;
+}
+
+function generateShortLinkForData(dataArr, cb){
+  if(!dataArr || dataArr.length === 0){ cb(''); return; }
+  var adapted = dataArr.map(adaptTicketForShare);
+  var code = genShortCode(adapted);
+  var payload = { data: adapted, ts: Date.now() };
+  var xhr = new XMLHttpRequest();
+  xhr.open('PUT', FIREBASE_URL + '/t/' + code + '.json', true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  xhr.onload = function(){
+    if(xhr.status >= 200 && xhr.status < 300){
+      cb(BASE_URL + '?v=' + code);
+    } else {
+      cb('');
+    }
+  };
+  xhr.onerror = function(){ cb(''); };
+  xhr.send(JSON.stringify(payload));
+}
+
 function shareLink(){
   if(!DATA.length){ showStatus('❌ Niciun date','err'); return; }
   var selCount = Object.keys(SELECTED).length;
@@ -732,26 +1022,7 @@ function shareLink(){
   var btn=document.getElementById('shareBtn');
   btn.disabled=true; btn.textContent='⏳ Se salvează în Firebase...';
 
-  // Adapteaza cheile pentru raport (t, a, b, ob, l, ad, j, ty, d, dp, n, lat, lng)
-  var adaptedData = dataToShare.map(function(r){
-    var obj = {
-      t: s(r.numar || r.t),
-      a: s(r.obj__hexid || r.a),
-      b: s(r.obj__client__denumire || r.b),
-      ob: s(r.obj__name || r.ob),
-      l: s(r.obj__loc || r.l),
-      ad: s(r.obj__address || r.ad),
-      j: s(r.obj__jud || r.j),
-      ty: s(r.type || r.ty),
-      d: s(r.obj__objevents__last_date || r.d),
-      dp: s(r.date_prg || r.dp),
-      n: s(r.note || r.n)
-    };
-    if(r.lat && r.lng){ obj.lat = r.lat; obj.lng = r.lng; }
-    if(r.contacts && r.contacts.length){ obj.contacts = r.contacts; }
-    if(r.info) obj.info = r.info;
-    return obj;
-  });
+  var adaptedData = dataToShare.map(adaptTicketForShare);
 
   var code = genShortCode(adaptedData);
   var payload = { data: adaptedData, ts: Date.now() };
@@ -1003,7 +1274,19 @@ function openMap(){
   if(!src.length) src = DATA;
   var mapSelCount = Object.keys(SELECTED).length;
   var mapCountEl = document.getElementById('map-count');
-  if(mapSelCount > 0){
+  if(TEAMS.length > 0){
+    // Contor per echipa
+    var teamCountsMap = {};
+    TEAMS.forEach(function(t){ teamCountsMap[t.id] = 0; });
+    src.forEach(function(r){
+      var tid = TEAM_ASSIGNMENTS[s(r.t)];
+      if(tid && teamCountsMap[tid]!==undefined) teamCountsMap[tid]++;
+    });
+    var teamsHtml = TEAMS.map(function(t){
+      return '<span style="display:inline-flex;align-items:center;gap:4px;background:'+t.color+'22;color:'+t.color+';padding:2px 8px;border-radius:100px;font-size:11px;font-weight:700;margin-left:4px"><span style="width:8px;height:8px;border-radius:50%;background:'+t.color+'"></span>'+t.name+' '+teamCountsMap[t.id]+'</span>';
+    }).join('');
+    mapCountEl.innerHTML = src.length + ' tickete ' + teamsHtml;
+  } else if(mapSelCount > 0){
     mapCountEl.innerHTML = src.length + ' tickete · <span style="color:#4caf50;font-weight:600">'+mapSelCount+' selectate</span>';
   } else {
     mapCountEl.textContent = src.length + ' tickete';
@@ -1054,7 +1337,8 @@ function geocodeAll(src){
 
   for(var i=0; i<src.length; i++){
     var r = src[i];
-    var color = COLORS[i % COLORS.length];
+    var team = getTicketTeam(s(r.t));
+    var color = team ? team.color : COLORS[i % COLORS.length];
     var addr = s(r.ad)+', '+s(r.l)+', Romania';
     var gmUrl = 'https://www.google.com/maps/search/'+encodeURIComponent(addr);
     var wazeUrl = 'https://waze.com/ul?q='+encodeURIComponent(addr);
