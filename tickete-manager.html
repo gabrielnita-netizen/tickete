@@ -1384,14 +1384,27 @@ function geocodeAll(src){
     var wazeUrl = 'https://waze.com/ul?q='+encodeURIComponent(addr);
     var isSelList = SELECTED[s(r.t)] ? true : false;
 
+    var actionButtons = '';
+    if(TEAMS.length > 0){
+      actionButtons = TEAMS.map(function(t){
+        var assigned = TEAM_ASSIGNMENTS[s(r.t)] === t.id;
+        var bg = assigned ? t.color : 'transparent';
+        var col = assigned ? '#fff' : t.color;
+        var dotBg = assigned ? '#fff' : t.color;
+        return '<button data-tid="'+s(r.t)+'" data-teamid="'+t.id+'" class="map-team-btn" style="display:inline-flex;align-items:center;gap:4px;padding:5px 10px;border:2px solid '+t.color+';background:'+bg+';color:'+col+';border-radius:100px;font-size:11px;font-weight:700;cursor:pointer;white-space:nowrap"><span style="width:7px;height:7px;border-radius:50%;background:'+dotBg+'"></span>'+t.name+'</button>';
+      }).join('');
+    } else {
+      actionButtons = '<button data-tid="'+s(r.t)+'" class="map-sel-btn" style="padding:4px 10px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:'+(isSelList?'#4caf50':'#ff8c00')+';color:#fff;white-space:nowrap">'+(isSelList?'Selectat':'Selecteaza')+'</button>';
+    }
+
     listHtml += '<div class="map-list-item" data-idx="'+i+'" style="display:flex;align-items:center;gap:8px;padding:9px 16px;border-bottom:1px solid var(--br);font-size:12px;cursor:pointer">'+
       '<span style="background:'+color+';color:#fff;border-radius:50%;width:22px;height:22px;min-width:22px;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700">'+(i+1)+'</span>'+
       '<div style="flex:1;min-width:0">'+
         '<div style="font-weight:600;color:var(--tx);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s(r.t)+' — '+(s(r.ob)||s(r.b))+'</div>'+
         '<div style="color:var(--t2);overflow:hidden;text-overflow:ellipsis;white-space:nowrap">'+s(r.ad)+', '+s(r.l)+'</div>'+
       '</div>'+
-      '<div style="display:flex;gap:4px;flex-shrink:0;align-items:center">'+
-        '<button data-tid="'+s(r.t)+'" class="map-sel-btn" style="padding:4px 10px;border:none;border-radius:4px;font-size:11px;font-weight:600;cursor:pointer;background:'+(isSelList?'#4caf50':'#ff8c00')+';color:#fff;white-space:nowrap">'+(isSelList?'Selectat':'Selecteaza')+'</button>'+
+      '<div style="display:flex;gap:4px;flex-shrink:0;align-items:center;flex-wrap:wrap;justify-content:flex-end;max-width:360px">'+
+        actionButtons+
         '<a href="'+gmUrl+'" target="_blank" onclick="event.stopPropagation()" style="background:#4285f4;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">Maps</a>'+
         '<a href="'+wazeUrl+'" target="_blank" onclick="event.stopPropagation()" style="background:#33ccff;color:#fff;border-radius:4px;padding:4px 8px;font-size:11px;text-decoration:none">Waze</a>'+
       '</div>'+
@@ -1433,6 +1446,26 @@ function geocodeAll(src){
     btn.addEventListener('click',function(e){
       e.stopPropagation();
       toggleSelectList(btn.getAttribute('data-tid'));
+    });
+  });
+  document.querySelectorAll('.map-team-btn').forEach(function(btn){
+    btn.addEventListener('click',function(e){
+      e.stopPropagation();
+      var ticketId = btn.getAttribute('data-tid');
+      var teamId = btn.getAttribute('data-teamid');
+      if(TEAM_ASSIGNMENTS[ticketId] === teamId){
+        delete TEAM_ASSIGNMENTS[ticketId];
+      } else {
+        TEAM_ASSIGNMENTS[ticketId] = teamId;
+      }
+      saveTeamsToStorage();
+      renderTeamsBar();
+      updateTable();
+      // Reface lista si markerele hartii pentru culori actualizate
+      var mapModalEl = document.getElementById('mapModal');
+      if(mapModalEl && mapModalEl.className.indexOf('on') >= 0){
+        openMap();
+      }
     });
   });
 }
