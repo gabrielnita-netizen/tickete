@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="ro">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#0F1113">
+<title>Dashboard Tickete Live</title>
+<style>
+:root{--pr:#4a90e2;--bg:#0F1113;--su:#1a1d21;--tx:#f0f0f0;--t2:#8b98a5;--t3:#5a6570;--br:#2a2d31;--br-lt:#22252a;--ok:#4caf50;--warn:#ff9800;--err:#e53935}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;padding:16px;padding-top:calc(16px + env(safe-area-inset-top));padding-bottom:calc(16px + env(safe-area-inset-bottom))}
+.wrap{max-width:1200px;margin:0 auto}
+.hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px}
+h1{font-size:22px;font-weight:800;color:var(--pr);margin:0;letter-spacing:-.3px}
+.status-bar{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--t2)}
+.live-dot{width:10px;height:10px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(76,175,80,.6)}70%{box-shadow:0 0 0 8px rgba(76,175,80,0)}100%{box-shadow:0 0 0 0 rgba(76,175,80,0)}}
+button.refresh{background:var(--pr);color:#fff;border:none;border-radius:100px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600}
+button.refresh:active{opacity:.7}
+.filters{background:var(--su);border:1px solid var(--br);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.filter-btn{background:transparent;color:var(--t2);border:1.5px solid var(--br);border-radius:100px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600;transition:all .15s}
+.filter-btn.on{background:var(--pr);color:#fff;border-color:var(--pr)}
+.filter-btn:hover:not(.on){border-color:var(--pr);color:var(--pr)}
+.filter-label{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
+.filter-sep{width:1px;height:20px;background:var(--br)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
+.sc{background:var(--su);border:1px solid var(--br);border-radius:12px;padding:16px;text-align:center;transition:transform .2s}
+.sc:hover{transform:translateY(-2px)}
+.sv{font-size:32px;font-weight:800;letter-spacing:-.5px}
+.sl{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;font-weight:600}
+.sc.ok .sv{color:var(--ok)}
+.sc.warn .sv{color:var(--warn)}
+.sc.pending .sv{color:var(--t2)}
+.sc.total .sv{color:var(--pr)}
+.section{background:var(--su);border:1px solid var(--br);border-radius:12px;padding:16px;margin-bottom:16px}
+.sec-title{font-size:13px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.team-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--br-lt)}
+.team-row:last-child{border-bottom:none}
+.team-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
+.team-name{font-weight:700;font-size:14px;min-width:100px;flex-shrink:0}
+.team-bar{flex:1;background:var(--br-lt);border-radius:100px;height:14px;overflow:hidden;position:relative}
+.team-bar-fill{height:100%;border-radius:100px;transition:width .5s ease}
+.team-stats{display:flex;gap:10px;font-size:12px;color:var(--t2);min-width:180px;justify-content:flex-end;flex-shrink:0}
+.team-stats span{display:inline-flex;align-items:center;gap:3px;font-weight:600}
+.team-stats .st-ok{color:var(--ok)}
+.team-stats .st-warn{color:var(--warn)}
+.team-stats .st-pend{color:var(--t3)}
+.actions-list{max-height:400px;overflow-y:auto}
+.act-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--br-lt);font-size:13px}
+.act-row:last-child{border-bottom:none}
+.act-time{color:var(--t3);font-size:11px;min-width:44px;font-family:monospace}
+.act-icon{width:22px;text-align:center}
+.act-team{font-weight:700;min-width:60px;font-size:12px}
+.act-num{color:var(--t2);font-size:12px;font-family:monospace;min-width:100px}
+.act-obj{color:var(--tx);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act-row.new{background:linear-gradient(90deg,rgba(76,175,80,.15),transparent);animation:flashNew 3s ease}
+@keyframes flashNew{0%{background:rgba(76,175,80,.3)}100%{background:transparent}}
+.empty{text-align:center;color:var(--t3);padding:30px;font-style:italic}
+.err-banner{background:rgba(229,57,53,.15);color:var(--err);padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;border-left:3px solid var(--err)}
+@media(max-width:720px){
+  .stats{grid-template-columns:repeat(2,1fr)}
+  .sv{font-size:24px}
+  .team-row{flex-wrap:wrap}
+  .team-name{min-width:auto}
+  .team-bar{order:3;width:100%;flex:0 0 100%}
+  .team-stats{min-width:auto;justify-content:flex-start}
+  h1{font-size:18px}
+  .filters{padding:10px 12px}
+  .filter-btn{font-size:11px;padding:5px 10px}
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="hdr">
+    <h1>📊 Dashboard Live</h1>
+    <div class="status-bar">
+      <span class="live-dot" id="liveDot"></span>
+      <span id="lastUpdate">Se încarcă...</span>
+      <button class="refresh" onclick="loadData(true)">🔄 Refresh</button>
+    </div>
+  </div>
+
+  <div class="filters">
+    <span class="filter-label">Perioada:</span>
+    <button class="filter-btn on" data-days="1" onclick="setDays(1)">24h</button>
+    <button class="filter-btn" data-days="3" onclick="setDays(3)">3 zile</button>
+    <button class="filter-btn" data-days="7" onclick="setDays(7)">7 zile</button>
+    <button class="filter-btn" data-days="30" onclick="setDays(30)">30 zile</button>
+    <div class="filter-sep"></div>
+    <span class="filter-label">Echipa:</span>
+    <div id="teamFilter" style="display:inline-flex;gap:6px;flex-wrap:wrap">
+      <button class="filter-btn on" data-tid="" onclick="setTeam('')">Toate</button>
+    </div>
+  </div>
+
+  <div id="errBanner"></div>
+
+  <div class="stats">
+    <div class="sc total"><div class="sv" id="stTotal">0</div><div class="sl">Total tickete</div></div>
+    <div class="sc ok"><div class="sv" id="stOk">0</div><div class="sl">Rezolvate</div></div>
+    <div class="sc warn"><div class="sv" id="stWarn">0</div><div class="sl">Nerezolvate</div></div>
+    <div class="sc pending"><div class="sv" id="stPend">0</div><div class="sl">În așteptare</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">🎯 Progres pe echipe</div>
+    <div id="teamsList"><div class="empty">Nicio echipă activă în perioada selectată</div></div>
+  </div>
+
+  <div class="section">
+    <div class="sec-title">⚡ Activitate recentă</div>
+    <div class="actions-list" id="actionsList"><div class="empty">Nicio activitate încă</div></div>
+  </div>
+
+  <div style="text-align:center;color:var(--t3);font-size:11px;margin-top:20px">
+    Auto-refresh la 10 sec · <span id="pollCount">0</span> update-uri · <span id="linksCount">0</span> linkuri active
+  </div>
+</div>
+
+<script>
+var FIREBASE_URL = 'https://tickete-jud-default-rtdb.europe-west1.firebasedatabase.app';
+var POLL_INTERVAL = 10000; // 10 secunde
+var FILTER_DAYS = 1;
+var FILTER_TEAM = '';
+var pollTimer = null;
+var pollCount = 0;
+var previousActionsKey = ''; // pentru detectare tickete noi (animatie flash)
+
+function setDays(d){
+  FILTER_DAYS = d;
+  document.querySelectorAll('.filter-btn[data-days]').forEach(function(b){
+    b.classList.toggle('on', parseInt(b.getAttribute('data-days')) === d);
+  });
+  loadData();
+}
+function setTeam(tid){
+  FILTER_TEAM = tid;
+  document.querySelectorAll('#teamFilter .filter-btn').forEach(function(b){
+    b.classList.toggle('on', (b.getAttribute('data-tid')||'') === tid);
+  });
+  renderAll();
+}
+
+// Cache datele curente pentru re-render la schimbare filtre
+var CACHED_LINKS = [];
+var CACHED_STATUSES = {};
+
+function loadData(manual){
+  var dot = document.getElementById('liveDot');
+  dot.style.background = 'var(--warn)';
+  var cutoff = Date.now() - (FILTER_DAYS * 24 * 3600 * 1000);
+  fetch(FIREBASE_URL + '/t.json')
+    .then(function(r){ return r.json(); })
+    .then(function(all){
+      if(!all){
+        showError('Nu există linkuri în baza de date');
+        return;
+      }
+      // Extract link-urile recente cu date
+      var links = [];
+      Object.keys(all).forEach(function(code){
+        var entry = all[code];
+        if(!entry || !entry.data) return;
+        if(entry.ts && entry.ts >= cutoff){
+          links.push({
+            code: code,
+            ts: entry.ts,
+            teams: entry.teams || null,
+            link_team: entry.link_team || null,
+            link_team_color: entry.link_team_color || null,
+            data: entry.data,
+            resolved: entry.resolved || {},
+            nerezolvat: entry.nerezolvat || {}
+          });
+        }
+      });
+      CACHED_LINKS = links;
+      document.getElementById('linksCount').textContent = links.length;
+      pollCount++;
+      document.getElementById('pollCount').textContent = pollCount;
+      document.getElementById('lastUpdate').textContent = 'Actualizat: ' + new Date().toLocaleTimeString('ro-RO');
+      dot.style.background = 'var(--ok)';
+      hideError();
+      renderAll();
+    })
+    .catch(function(e){
+      dot.style.background = 'var(--err)';
+      showError('Eroare la conectare Firebase: ' + e.message);
+    });
+}
+
+function showError(msg){
+  document.getElementById('errBanner').innerHTML = '<div class="err-banner">⚠️ ' + msg + '</div>';
+}
+function hideError(){
+  document.getElementById('errBanner').innerHTML = '';
+}
+
+function renderAll(){
+  // Deduplicare tickete pe (r.t) => ia ultimul status
+  var ticketsMap = {}; // ticketNr -> {ticket, status, teamId, teamName, teamColor, sourceTs}
+  var teamsMap = {}; // teamId -> {id, name, color}
+  var linksToUse = CACHED_LINKS;
+
+  linksToUse.forEach(function(l){
+    // Colecteaza echipele din link
+    if(l.teams && Array.isArray(l.teams)){
+      l.teams.forEach(function(tm){
+        if(!teamsMap[tm.id]) teamsMap[tm.id] = {id: tm.id, name: tm.name, color: tm.color};
+      });
+    }
+    // Sau echipa link-ului (linkuri per echipa)
+    if(l.link_team && !teamsMap['link_'+l.link_team]){
+      teamsMap['link_'+l.link_team] = {id:'link_'+l.link_team, name:l.link_team, color:l.link_team_color||'#8b98a5'};
+    }
+    // Proceseaza ticketele
+    l.data.forEach(function(t){
+      var num = String(t.t||'');
+      if(!num) return;
+      var status = 'pending';
+      if(l.resolved[num]) status = 'resolved';
+      else if(l.nerezolvat[num]) status = 'nerezolvat';
+      var teamId = t.team_id || (l.link_team ? 'link_'+l.link_team : null);
+      var teamName = t.team_name || l.link_team || null;
+      var teamColor = t.team_color || l.link_team_color || '#8b98a5';
+      // Deduplicare: pastreaza ticketul din link-ul cel mai NOU
+      if(!ticketsMap[num] || l.ts > ticketsMap[num].sourceTs){
+        ticketsMap[num] = {
+          t: t,
+          status: status,
+          teamId: teamId,
+          teamName: teamName,
+          teamColor: teamColor,
+          sourceTs: l.ts,
+          sourceCode: l.code
+        };
+      }
+    });
+  });
+
+  // Filtreaza pe echipa
+  var allTickets = Object.values(ticketsMap);
+  var tickets = FILTER_TEAM
+    ? allTickets.filter(function(x){ return x.teamId === FILTER_TEAM; })
+    : allTickets;
+
+  // Stats
+  var stTotal = tickets.length;
+  var stOk = tickets.filter(function(x){ return x.status==='resolved'; }).length;
+  var stWarn = tickets.filter(function(x){ return x.status==='nerezolvat'; }).length;
+  var stPend = tickets.filter(function(x){ return x.status==='pending'; }).length;
+  document.getElementById('stTotal').textContent = stTotal;
+  document.getElementById('stOk').textContent = stOk;
+  document.getElementById('stWarn').textContent = stWarn;
+  document.getElementById('stPend').textContent = stPend;
+
+  // Filtru echipe UI
+  var teamFilterEl = document.getElementById('teamFilter');
+  var teamButtonsHtml = '<button class="filter-btn'+(FILTER_TEAM===''?' on':'')+'" data-tid="" onclick="setTeam(\'\')">Toate</button>';
+  Object.values(teamsMap).forEach(function(tm){
+    var count = allTickets.filter(function(x){ return x.teamId === tm.id; }).length;
+    if(count === 0) return;
+    var on = FILTER_TEAM === tm.id;
+    teamButtonsHtml += '<button class="filter-btn'+(on?' on':'')+'" data-tid="'+tm.id+'" onclick="setTeam(\''+tm.id+'\')" style="'+(on?'background:'+tm.color+';border-color:'+tm.color:'color:'+tm.color+';border-color:'+tm.color)+'">'+tm.name+' ('+count+')</button>';
+  });
+  teamFilterEl.innerHTML = teamButtonsHtml;
+
+  // Progres pe echipe
+  var teamsList = document.getElementById('teamsList');
+  var activeTeams = Object.values(teamsMap).map(function(tm){
+    var tt = allTickets.filter(function(x){ return x.teamId === tm.id; });
+    return {
+      team: tm,
+      total: tt.length,
+      ok: tt.filter(function(x){ return x.status==='resolved'; }).length,
+      warn: tt.filter(function(x){ return x.status==='nerezolvat'; }).length,
+      pend: tt.filter(function(x){ return x.status==='pending'; }).length
+    };
+  }).filter(function(x){ return x.total > 0; }).sort(function(a,b){ return b.total - a.total; });
+
+  if(activeTeams.length === 0){
+    teamsList.innerHTML = '<div class="empty">Nicio echipă activă în perioada selectată</div>';
+  } else {
+    teamsList.innerHTML = activeTeams.map(function(x){
+      var doneCount = x.ok + x.warn;
+      var pct = x.total > 0 ? Math.round((doneCount / x.total) * 100) : 0;
+      return '<div class="team-row">'+
+        '<span class="team-dot" style="background:'+x.team.color+'"></span>'+
+        '<span class="team-name" style="color:'+x.team.color+'">'+x.team.name+'</span>'+
+        '<div class="team-bar"><div class="team-bar-fill" style="width:'+pct+'%;background:'+x.team.color+'"></div></div>'+
+        '<div class="team-stats">'+
+          '<span class="st-ok">✓ '+x.ok+'</span>'+
+          '<span class="st-warn">⚠ '+x.warn+'</span>'+
+          '<span class="st-pend">⏳ '+x.pend+'</span>'+
+          '<span style="font-weight:800;color:'+x.team.color+'">'+pct+'%</span>'+
+        '</div>'+
+      '</div>';
+    }).join('');
+  }
+
+  // Activitate recenta - doar ticketele finalizate (resolved/nerezolvat)
+  var actions = tickets.filter(function(x){ return x.status !== 'pending'; })
+    .sort(function(a,b){ return b.sourceTs - a.sourceTs; })
+    .slice(0, 50);
+
+  var actionsList = document.getElementById('actionsList');
+  if(actions.length === 0){
+    actionsList.innerHTML = '<div class="empty">Nicio activitate încă. Colegii nu au marcat nimic în această perioadă.</div>';
+  } else {
+    var currentKey = actions.map(function(a){ return a.t.t + ':' + a.status; }).join('|');
+    var newKey = previousActionsKey;
+    var isFirstRun = previousActionsKey === '';
+    actionsList.innerHTML = actions.map(function(a){
+      var num = String(a.t.t||'');
+      var isNew = !isFirstRun && previousActionsKey.indexOf(num + ':' + a.status) === -1 && previousActionsKey !== '';
+      var timeStr = new Date(a.sourceTs).toLocaleTimeString('ro-RO', {hour:'2-digit',minute:'2-digit'});
+      var icon = a.status === 'resolved' ? '<span style="color:var(--ok)">✓</span>' : '<span style="color:var(--warn)">⚠</span>';
+      var teamBadge = a.teamName ? '<span class="act-team" style="color:'+a.teamColor+'">'+a.teamName+'</span>' : '<span class="act-team" style="color:var(--t3)">—</span>';
+      return '<div class="act-row'+(isNew?' new':'')+'">'+
+        '<span class="act-time">'+timeStr+'</span>'+
+        '<span class="act-icon">'+icon+'</span>'+
+        teamBadge+
+        '<span class="act-num">#'+num+'</span>'+
+        '<span class="act-obj">'+(a.t.ob||a.t.b||'—')+' · '+(a.t.l||'')+'</span>'+
+      '</div>';
+    }).join('');
+    previousActionsKey = currentKey;
+  }
+}
+
+// Init
+loadData();
+pollTimer = setInterval(loadData, POLL_INTERVAL);
+
+// Cleanup la close tab
+window.addEventListener('beforeunload', function(){
+  if(pollTimer) clearInterval(pollTimer);
+});
+</script>
+</body>
+</html>
