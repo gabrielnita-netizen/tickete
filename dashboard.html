@@ -4,28 +4,36 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="theme-color" content="#0F1113">
-<title>Dashboard Tickete Live</title>
+<title>Dashboard Tickete</title>
 <style>
 :root{--pr:#4a90e2;--bg:#0F1113;--su:#1a1d21;--tx:#f0f0f0;--t2:#8b98a5;--t3:#5a6570;--br:#2a2d31;--br-lt:#22252a;--ok:#4caf50;--warn:#ff9800;--err:#e53935}
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;background:var(--bg);color:var(--tx);min-height:100vh;padding:16px;padding-top:calc(16px + env(safe-area-inset-top));padding-bottom:calc(16px + env(safe-area-inset-bottom))}
 .wrap{max-width:1200px;margin:0 auto}
 .hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;flex-wrap:wrap;gap:12px}
-h1{font-size:22px;font-weight:800;color:var(--pr);margin:0;letter-spacing:-.3px}
-.status-bar{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--t2)}
+h1{font-size:22px;font-weight:800;color:var(--pr);margin:0}
+.status-bar{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--t2);flex-wrap:wrap}
 .live-dot{width:10px;height:10px;border-radius:50%;background:var(--ok);animation:pulse 2s infinite}
 @keyframes pulse{0%{box-shadow:0 0 0 0 rgba(76,175,80,.6)}70%{box-shadow:0 0 0 8px rgba(76,175,80,0)}100%{box-shadow:0 0 0 0 rgba(76,175,80,0)}}
-button.refresh{background:var(--pr);color:#fff;border:none;border-radius:100px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600}
-button.refresh:active{opacity:.7}
+button.act-btn{background:var(--pr);color:#fff;border:none;border-radius:100px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600}
+button.act-btn.gray{background:transparent;color:var(--t2);border:1.5px solid var(--br)}
+button.act-btn.gray:hover{color:var(--tx);border-color:var(--pr)}
+button.act-btn.danger{background:transparent;color:var(--err);border:1.5px solid var(--err)}
+button.act-btn.danger:hover{background:var(--err);color:#fff}
+button.act-btn.export{background:transparent;color:var(--ok);border:1.5px solid var(--ok)}
+button.act-btn.export:hover{background:var(--ok);color:#fff}
+.tabs{display:flex;gap:4px;margin-bottom:16px;border-bottom:2px solid var(--br);overflow-x:auto}
+.tab{background:transparent;border:none;color:var(--t2);padding:12px 20px;font-size:14px;font-weight:600;cursor:pointer;border-bottom:3px solid transparent;margin-bottom:-2px;white-space:nowrap}
+.tab:hover{color:var(--tx)}
+.tab.active{color:var(--pr);border-bottom-color:var(--pr)}
 .filters{background:var(--su);border:1px solid var(--br);border-radius:12px;padding:14px 16px;margin-bottom:16px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
-.filter-btn{background:transparent;color:var(--t2);border:1.5px solid var(--br);border-radius:100px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600;transition:all .15s}
+.filter-btn{background:transparent;color:var(--t2);border:1.5px solid var(--br);border-radius:100px;padding:6px 14px;font-size:12px;cursor:pointer;font-weight:600}
 .filter-btn.on{background:var(--pr);color:#fff;border-color:var(--pr)}
 .filter-btn:hover:not(.on){border-color:var(--pr);color:var(--pr)}
 .filter-label{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;font-weight:700}
 .filter-sep{width:1px;height:20px;background:var(--br)}
 .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:20px}
-.sc{background:var(--su);border:1px solid var(--br);border-radius:12px;padding:16px;text-align:center;transition:transform .2s}
-.sc:hover{transform:translateY(-2px)}
+.sc{background:var(--su);border:1px solid var(--br);border-radius:12px;padding:16px;text-align:center}
 .sv{font-size:32px;font-weight:800;letter-spacing:-.5px}
 .sl{font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;margin-top:4px;font-weight:600}
 .sc.ok .sv{color:var(--ok)}
@@ -33,60 +41,98 @@ button.refresh:active{opacity:.7}
 .sc.pending .sv{color:var(--t2)}
 .sc.total .sv{color:var(--pr)}
 .section{background:var(--su);border:1px solid var(--br);border-radius:12px;padding:16px;margin-bottom:16px}
-.sec-title{font-size:13px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sec-title{font-size:13px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:14px}
 .team-row{display:flex;align-items:center;gap:12px;padding:12px 0;border-bottom:1px solid var(--br-lt)}
 .team-row:last-child{border-bottom:none}
 .team-dot{width:12px;height:12px;border-radius:50%;flex-shrink:0}
-.team-name{font-weight:700;font-size:14px;min-width:100px;flex-shrink:0}
-.team-bar{flex:1;background:var(--br-lt);border-radius:100px;height:14px;overflow:hidden;position:relative}
-.team-bar-fill{height:100%;border-radius:100px;transition:width .5s ease}
-.team-stats{display:flex;gap:10px;font-size:12px;color:var(--t2);min-width:180px;justify-content:flex-end;flex-shrink:0}
+.team-name{font-weight:700;font-size:14px;min-width:100px}
+.team-bar{flex:1;background:var(--br-lt);border-radius:100px;height:14px;overflow:hidden}
+.team-bar-fill{height:100%;border-radius:100px;transition:width .5s}
+.team-stats{display:flex;gap:10px;font-size:12px;min-width:180px;justify-content:flex-end}
 .team-stats span{display:inline-flex;align-items:center;gap:3px;font-weight:600}
-.team-stats .st-ok{color:var(--ok)}
-.team-stats .st-warn{color:var(--warn)}
-.team-stats .st-pend{color:var(--t3)}
+.team-stats .st-ok{color:var(--ok)}.team-stats .st-warn{color:var(--warn)}.team-stats .st-pend{color:var(--t3)}
 .actions-list{max-height:400px;overflow-y:auto}
 .act-row{display:flex;align-items:center;gap:12px;padding:10px 0;border-bottom:1px solid var(--br-lt);font-size:13px}
-.act-row:last-child{border-bottom:none}
 .act-time{color:var(--t3);font-size:11px;min-width:44px;font-family:monospace}
-.act-icon{width:22px;text-align:center}
 .act-team{font-weight:700;min-width:60px;font-size:12px}
 .act-num{color:var(--t2);font-size:12px;font-family:monospace;min-width:100px}
-.act-obj{color:var(--tx);flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.act-obj{flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .act-row.new{background:linear-gradient(90deg,rgba(76,175,80,.15),transparent);animation:flashNew 3s ease}
 @keyframes flashNew{0%{background:rgba(76,175,80,.3)}100%{background:transparent}}
 .empty{text-align:center;color:var(--t3);padding:30px;font-style:italic}
 .err-banner{background:rgba(229,57,53,.15);color:var(--err);padding:10px 14px;border-radius:8px;margin-bottom:12px;font-size:13px;border-left:3px solid var(--err)}
+.top-perf{background:linear-gradient(135deg,rgba(74,144,226,.15),rgba(76,175,80,.15));border:1px solid rgba(74,144,226,.3);border-radius:12px;padding:20px;margin-bottom:16px;text-align:center}
+.top-perf .trophy{font-size:40px;margin-bottom:8px}
+.top-perf .name{font-size:22px;font-weight:800;margin-bottom:4px}
+.top-perf .subtitle{font-size:12px;color:var(--t2)}
+.bar-chart{display:flex;flex-direction:column;gap:10px}
+.bar-item{display:flex;align-items:center;gap:12px}
+.bar-item .label{min-width:120px;font-size:13px;font-weight:600}
+.bar-item .bar-track{flex:1;background:var(--br-lt);border-radius:100px;height:20px;overflow:hidden}
+.bar-item .bar-fill{height:100%;background:var(--pr);border-radius:100px;transition:width .5s;display:flex;align-items:center;padding-right:8px;justify-content:flex-end;color:#fff;font-size:11px;font-weight:700}
+.bar-item .value{min-width:60px;text-align:right;font-size:12px;color:var(--t2);font-weight:600}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+/* Compare tab */
+.cmp-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:14px 0;border-bottom:1px solid var(--br-lt);align-items:center}
+.cmp-row:last-child{border-bottom:none}
+.cmp-label{font-size:13px;color:var(--t2);font-weight:600}
+.cmp-val{display:flex;align-items:baseline;gap:6px}
+.cmp-val .num{font-size:22px;font-weight:800}
+.cmp-val .sub{font-size:12px;color:var(--t2)}
+.cmp-val.a .num{color:var(--pr)}
+.cmp-val.b .num{color:var(--warn)}
+.cmp-diff{font-size:14px;font-weight:700;display:flex;align-items:center;gap:6px;justify-content:flex-end}
+.cmp-diff.up{color:var(--ok)}
+.cmp-diff.down{color:var(--err)}
+.cmp-diff.eq{color:var(--t3)}
+.cmp-hdr{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px;padding:10px 0;border-bottom:2px solid var(--br);font-size:11px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;color:var(--t2);text-align:center}
+.cmp-hdr .a{color:var(--pr)}
+.cmp-hdr .b{color:var(--warn)}
+.cmp-tbl{width:100%;border-collapse:collapse;font-size:13px}
+.cmp-tbl th{padding:8px;text-align:left;color:var(--t2);border-bottom:1px solid var(--br);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.5px}
+.cmp-tbl th.a{color:var(--pr);text-align:right}
+.cmp-tbl th.b{color:var(--warn);text-align:right}
+.cmp-tbl th.d{text-align:right}
+.cmp-tbl td{padding:10px 8px;border-bottom:1px solid var(--br-lt)}
+.cmp-tbl td.a,.cmp-tbl td.b,.cmp-tbl td.d{text-align:right;font-weight:700}
+.cmp-tbl td.a{color:var(--pr)}
+.cmp-tbl td.b{color:var(--warn)}
 @media(max-width:720px){
   .stats{grid-template-columns:repeat(2,1fr)}
-  .sv{font-size:24px}
-  .team-row{flex-wrap:wrap}
-  .team-name{min-width:auto}
-  .team-bar{order:3;width:100%;flex:0 0 100%}
-  .team-stats{min-width:auto;justify-content:flex-start}
-  h1{font-size:18px}
-  .filters{padding:10px 12px}
-  .filter-btn{font-size:11px;padding:5px 10px}
+  .sv{font-size:24px}.team-row{flex-wrap:wrap}.team-name{min-width:auto}
+  .team-bar{order:3;width:100%;flex:0 0 100%}.team-stats{min-width:auto;justify-content:flex-start}
+  h1{font-size:18px}.grid2{grid-template-columns:1fr}.tab{padding:10px 12px;font-size:12px}
+  .bar-item .label{min-width:90px;font-size:11px}
 }
 </style>
 </head>
 <body>
 <div class="wrap">
   <div class="hdr">
-    <h1>📊 Dashboard Live</h1>
+    <h1>📊 Dashboard Tickete</h1>
     <div class="status-bar">
       <span class="live-dot" id="liveDot"></span>
       <span id="lastUpdate">Se încarcă...</span>
-      <button class="refresh" onclick="loadData(true)">🔄 Refresh</button>
+      <button class="act-btn" onclick="loadData(true)">🔄</button>
+      <button class="act-btn gray" onclick="resetView()" title="Ascunde linkurile din vizualizare">🔄 Reset</button>
+      <button class="act-btn danger" onclick="purgeArchive()" title="Șterge din Firebase linkurile > 30 zile">🗑 Arhivă</button>
+      <button class="act-btn export" onclick="exportCSV()">📥 CSV</button>
     </div>
+  </div>
+
+  <div class="tabs">
+    <button class="tab active" data-tab="live" onclick="switchTab('live')">⚡ Live</button>
+    <button class="tab" data-tab="stats" onclick="switchTab('stats')">📊 Statistici zi</button>
+    <button class="tab" data-tab="trends" onclick="switchTab('trends')">📈 Trends</button>
+    <button class="tab" data-tab="compare" onclick="switchTab('compare')">🔀 Compară</button>
   </div>
 
   <div class="filters">
     <span class="filter-label">Perioada:</span>
-    <button class="filter-btn on" data-days="1" onclick="setDays(1)">24h</button>
-    <button class="filter-btn" data-days="3" onclick="setDays(3)">3 zile</button>
-    <button class="filter-btn" data-days="7" onclick="setDays(7)">7 zile</button>
-    <button class="filter-btn" data-days="30" onclick="setDays(30)">30 zile</button>
+    <button class="filter-btn on" data-period="day" onclick="setPeriod('day')">Ziua curentă</button>
+    <button class="filter-btn" data-period="week" onclick="setPeriod('week')">Săptămâna</button>
+    <button class="filter-btn" data-period="month" onclick="setPeriod('month')">Luna</button>
+    <button class="filter-btn" data-period="all" onclick="setPeriod('all')">Toate (30z)</button>
     <div class="filter-sep"></div>
     <span class="filter-label">Echipa:</span>
     <div id="teamFilter" style="display:inline-flex;gap:6px;flex-wrap:wrap">
@@ -96,166 +142,255 @@ button.refresh:active{opacity:.7}
 
   <div id="errBanner"></div>
 
-  <div class="stats">
-    <div class="sc total"><div class="sv" id="stTotal">0</div><div class="sl">Total tickete</div></div>
-    <div class="sc ok"><div class="sv" id="stOk">0</div><div class="sl">Rezolvate</div></div>
-    <div class="sc warn"><div class="sv" id="stWarn">0</div><div class="sl">Nerezolvate</div></div>
-    <div class="sc pending"><div class="sv" id="stPend">0</div><div class="sl">În așteptare</div></div>
+  <div id="tab-live" class="tab-content">
+    <div class="stats">
+      <div class="sc total"><div class="sv" id="stTotal">0</div><div class="sl">Total tickete</div></div>
+      <div class="sc ok"><div class="sv" id="stOk">0</div><div class="sl">Rezolvate</div></div>
+      <div class="sc warn"><div class="sv" id="stWarn">0</div><div class="sl">Nerezolvate</div></div>
+      <div class="sc pending"><div class="sv" id="stPend">0</div><div class="sl">În așteptare</div></div>
+    </div>
+    <div class="section">
+      <div class="sec-title">🎯 Progres pe echipe</div>
+      <div id="teamsList"><div class="empty">Nicio echipă activă</div></div>
+    </div>
+    <div class="section">
+      <div class="sec-title">⚡ Activitate recentă</div>
+      <div class="actions-list" id="actionsList"><div class="empty">Nicio activitate încă</div></div>
+    </div>
   </div>
 
-  <div class="section">
-    <div class="sec-title">🎯 Progres pe echipe</div>
-    <div id="teamsList"><div class="empty">Nicio echipă activă în perioada selectată</div></div>
+  <div id="tab-stats" class="tab-content" style="display:none">
+    <div id="topPerformer"></div>
+    <div class="grid2">
+      <div class="section">
+        <div class="sec-title">🎯 Rata rezolvare per echipă</div>
+        <div id="teamRateChart" class="bar-chart"></div>
+      </div>
+      <div class="section">
+        <div class="sec-title">🏷 Tipuri tickete</div>
+        <div id="typeChart" class="bar-chart"></div>
+      </div>
+    </div>
+    <div class="section">
+      <div class="sec-title">🏙 Top localități</div>
+      <div id="locChart" class="bar-chart"></div>
+    </div>
   </div>
 
-  <div class="section">
-    <div class="sec-title">⚡ Activitate recentă</div>
-    <div class="actions-list" id="actionsList"><div class="empty">Nicio activitate încă</div></div>
+  <div id="tab-trends" class="tab-content" style="display:none">
+    <div class="section">
+      <div class="sec-title" id="trendTitle">📈 Evoluție zilnică</div>
+      <div id="trendChart" class="bar-chart"></div>
+    </div>
+    <div class="section">
+      <div class="sec-title" id="teamCompareTitle">🎯 Comparație echipe pe zile</div>
+      <div id="teamCompareChart"></div>
+    </div>
+    <div class="section">
+      <div class="sec-title">⭐ Zile de vârf</div>
+      <div id="peakDays" class="bar-chart"></div>
+    </div>
   </div>
 
-  <div style="text-align:center;color:var(--t3);font-size:11px;margin-top:20px">
-    Auto-refresh la 10 sec · <span id="pollCount">0</span> update-uri · <span id="linksCount">0</span> linkuri active
+  <div id="tab-compare" class="tab-content" style="display:none">
+    <div class="section" style="padding:20px">
+      <div style="display:flex;gap:14px;align-items:end;flex-wrap:wrap;margin-bottom:14px">
+        <div>
+          <div style="font-size:11px;color:var(--t2);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px">Granularitate</div>
+          <select id="cmpType" onchange="onCompareTypeChange()" style="background:var(--bg);color:var(--tx);border:1.5px solid var(--br);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:14px;cursor:pointer">
+            <option value="day">Zi</option>
+            <option value="week">Săptămână</option>
+            <option value="month">Lună</option>
+          </select>
+        </div>
+        <div>
+          <div style="font-size:11px;color:var(--pr);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px">🅐 Perioada A</div>
+          <input type="date" id="cmpDateA" style="background:var(--bg);color:var(--tx);border:1.5px solid var(--pr);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:14px;color-scheme:dark">
+        </div>
+        <div style="font-size:20px;color:var(--t2);padding-bottom:6px">vs</div>
+        <div>
+          <div style="font-size:11px;color:var(--warn);text-transform:uppercase;letter-spacing:.5px;font-weight:700;margin-bottom:6px">🅑 Perioada B</div>
+          <input type="date" id="cmpDateB" style="background:var(--bg);color:var(--tx);border:1.5px solid var(--warn);border-radius:8px;padding:8px 12px;font-family:inherit;font-size:14px;color-scheme:dark">
+        </div>
+        <button onclick="setPreviousPeriod()" class="filter-btn" title="Setează B ca perioada anterioară lui A">⬅ vs anterioară</button>
+        <button onclick="runCompare()" class="act-btn" style="padding:10px 18px;font-size:14px">🔍 Compară</button>
+        <button onclick="exportCompareCSV()" class="act-btn export" style="padding:10px 18px;font-size:14px">📥 Export CSV</button>
+      </div>
+      <div id="cmpPeriodLabel" style="font-size:12px;color:var(--t2);font-style:italic"></div>
+    </div>
+
+    <div id="cmpResults" style="display:none">
+      <!-- Card sumar diferente -->
+      <div class="section">
+        <div class="sec-title" id="cmpTitle">🔀 Diferențe globale</div>
+        <div id="cmpSummary"></div>
+      </div>
+
+      <!-- Echipe side-by-side -->
+      <div class="section">
+        <div class="sec-title">🎯 Comparație echipe</div>
+        <div id="cmpTeams"></div>
+      </div>
+
+      <!-- Tipuri side-by-side -->
+      <div class="section">
+        <div class="sec-title">🏷 Tipuri tickete</div>
+        <div id="cmpTypes"></div>
+      </div>
+
+      <!-- Localitati side-by-side -->
+      <div class="section">
+        <div class="sec-title">🏙 Top localități</div>
+        <div id="cmpLocs"></div>
+      </div>
+    </div>
+    <div id="cmpEmpty" class="section"><div class="empty">Alege 2 perioade și apasă 🔍 Compară</div></div>
   </div>
 </div>
 
 <script>
 var FIREBASE_URL = 'https://tickete-jud-default-rtdb.europe-west1.firebasedatabase.app';
-var POLL_INTERVAL = 10000; // 10 secunde
-var FILTER_DAYS = 1;
+var POLL_INTERVAL = 10000;
+var FILTER_PERIOD = 'day'; // 'day' | 'week' | 'month' | 'all'
 var FILTER_TEAM = '';
+var CURRENT_TAB = 'live';
 var pollTimer = null;
-var pollCount = 0;
-var previousActionsKey = ''; // pentru detectare tickete noi (animatie flash)
+var previousActionsKey = '';
+var CACHED_LINKS = [];
+var VIEW_HIDDEN_CODES = {};
 
-function setDays(d){
-  FILTER_DAYS = d;
-  document.querySelectorAll('.filter-btn[data-days]').forEach(function(b){
-    b.classList.toggle('on', parseInt(b.getAttribute('data-days')) === d);
-  });
+// Calculeaza timestamp-ul de start pentru perioada aleasa (calendar-based)
+function getPeriodCutoff(){
+  var now = new Date();
+  if(FILTER_PERIOD === 'day'){
+    // Miezul nopții azi (00:00)
+    return new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+  }
+  if(FILTER_PERIOD === 'week'){
+    // Luni această săptămână, 00:00
+    var day = now.getDay(); // 0=duminica, 1=luni...
+    var diff = day === 0 ? 6 : day - 1; // câte zile inapoi până la luni
+    var monday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - diff);
+    return monday.getTime();
+  }
+  if(FILTER_PERIOD === 'month'){
+    // Ziua 1 a lunii curente, 00:00
+    return new Date(now.getFullYear(), now.getMonth(), 1).getTime();
+  }
+  // 'all' → ultimele 30 zile (rolling)
+  return now.getTime() - (30 * 24 * 3600 * 1000);
+}
+
+function switchTab(tab){
+  CURRENT_TAB = tab;
+  document.querySelectorAll('.tab').forEach(function(t){ t.classList.toggle('active', t.getAttribute('data-tab') === tab); });
+  document.querySelectorAll('.tab-content').forEach(function(c){ c.style.display = c.id === 'tab-' + tab ? 'block' : 'none'; });
+  renderAll();
+}
+function setPeriod(p){
+  FILTER_PERIOD = p;
+  document.querySelectorAll('.filter-btn[data-period]').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-period') === p); });
   loadData();
 }
 function setTeam(tid){
   FILTER_TEAM = tid;
-  document.querySelectorAll('#teamFilter .filter-btn').forEach(function(b){
-    b.classList.toggle('on', (b.getAttribute('data-tid')||'') === tid);
-  });
+  document.querySelectorAll('#teamFilter .filter-btn').forEach(function(b){ b.classList.toggle('on', (b.getAttribute('data-tid')||'') === tid); });
   renderAll();
 }
-
-// Cache datele curente pentru re-render la schimbare filtre
-var CACHED_LINKS = [];
-var CACHED_STATUSES = {};
-
-function loadData(manual){
+function resetView(){
+  if(!confirm('Ascunde toate linkurile curente din vizualizare?\n\nLinkurile rămân în Firebase.\nRămân ascunse 7 zile.')) return;
+  CACHED_LINKS.forEach(function(l){ VIEW_HIDDEN_CODES[l.code] = Date.now(); });
+  try { localStorage.setItem('dash_hidden', JSON.stringify(VIEW_HIDDEN_CODES)); } catch(e){}
+  previousActionsKey = '';
+  loadData(true);
+  showToast('✓ Vizualizare resetată');
+}
+function purgeArchive(){
+  if(!confirm('⚠ Șterge PERMANENT toate linkurile mai vechi de 30 zile din Firebase.\n\nContinuă?')) return;
+  if(!confirm('Ultima confirmare: acțiune ireversibilă. Continuă?')) return;
+  var cutoff = Date.now() - (30 * 24 * 3600 * 1000);
+  fetch(FIREBASE_URL + '/t.json').then(function(r){ return r.json(); }).then(function(all){
+    if(!all){ showToast('Firebase gol'); return; }
+    var toDelete = [];
+    Object.keys(all).forEach(function(code){ if(all[code] && all[code].ts && all[code].ts < cutoff) toDelete.push(code); });
+    if(toDelete.length === 0){ showToast('Nicio arhivă de șters'); return; }
+    var done = 0;
+    toDelete.forEach(function(code){
+      fetch(FIREBASE_URL + '/t/' + code + '.json', {method:'DELETE'}).then(function(){
+        done++;
+        if(done === toDelete.length){ showToast('✓ Șters '+done+' linkuri'); loadData(true); }
+      });
+    });
+  }).catch(function(e){ showToast('❌ '+e.message); });
+}
+function showToast(msg){
+  var el = document.createElement('div');
+  el.textContent = msg;
+  el.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:var(--pr);color:#fff;padding:12px 24px;border-radius:100px;font-weight:600;z-index:1000';
+  document.body.appendChild(el);
+  setTimeout(function(){ el.remove(); }, 3000);
+}
+function loadData(){
   var dot = document.getElementById('liveDot');
   dot.style.background = 'var(--warn)';
-  var cutoff = Date.now() - (FILTER_DAYS * 24 * 3600 * 1000);
-  fetch(FIREBASE_URL + '/t.json')
-    .then(function(r){ return r.json(); })
-    .then(function(all){
-      if(!all){
-        showError('Nu există linkuri în baza de date');
-        return;
+  var cutoff = getPeriodCutoff();
+  fetch(FIREBASE_URL + '/t.json').then(function(r){ return r.json(); }).then(function(all){
+    if(!all){ CACHED_LINKS = []; renderAll(); return; }
+    var links = [];
+    Object.keys(all).forEach(function(code){
+      var entry = all[code];
+      if(!entry || !entry.data) return;
+      if(VIEW_HIDDEN_CODES[code]) return;
+      if(entry.ts && entry.ts >= cutoff){
+        links.push({
+          code: code, ts: entry.ts, teams: entry.teams || null,
+          link_team: entry.link_team || null, link_team_color: entry.link_team_color || null,
+          data: entry.data, resolved: entry.resolved || {}, nerezolvat: entry.nerezolvat || {}
+        });
       }
-      // Extract link-urile recente cu date
-      var links = [];
-      Object.keys(all).forEach(function(code){
-        var entry = all[code];
-        if(!entry || !entry.data) return;
-        if(entry.ts && entry.ts >= cutoff){
-          links.push({
-            code: code,
-            ts: entry.ts,
-            teams: entry.teams || null,
-            link_team: entry.link_team || null,
-            link_team_color: entry.link_team_color || null,
-            data: entry.data,
-            resolved: entry.resolved || {},
-            nerezolvat: entry.nerezolvat || {}
-          });
-        }
-      });
-      CACHED_LINKS = links;
-      document.getElementById('linksCount').textContent = links.length;
-      pollCount++;
-      document.getElementById('pollCount').textContent = pollCount;
-      document.getElementById('lastUpdate').textContent = 'Actualizat: ' + new Date().toLocaleTimeString('ro-RO');
-      dot.style.background = 'var(--ok)';
-      hideError();
-      renderAll();
-    })
-    .catch(function(e){
-      dot.style.background = 'var(--err)';
-      showError('Eroare la conectare Firebase: ' + e.message);
     });
+    CACHED_LINKS = links;
+    document.getElementById('lastUpdate').textContent = new Date().toLocaleTimeString('ro-RO') + ' · ' + links.length + ' linkuri';
+    dot.style.background = 'var(--ok)';
+    document.getElementById('errBanner').innerHTML = '';
+    renderAll();
+  }).catch(function(e){
+    dot.style.background = 'var(--err)';
+    document.getElementById('errBanner').innerHTML = '<div class="err-banner">⚠️ Eroare: ' + e.message + '</div>';
+  });
 }
-
-function showError(msg){
-  document.getElementById('errBanner').innerHTML = '<div class="err-banner">⚠️ ' + msg + '</div>';
-}
-function hideError(){
-  document.getElementById('errBanner').innerHTML = '';
-}
-
-function renderAll(){
-  // Deduplicare tickete pe (r.t) => ia ultimul status
-  var ticketsMap = {}; // ticketNr -> {ticket, status, teamId, teamName, teamColor, sourceTs}
-  var teamsMap = {}; // teamId -> {id, name, color}
-  var linksToUse = CACHED_LINKS;
-
-  linksToUse.forEach(function(l){
-    // Colecteaza echipele din link
+function processTickets(){
+  var ticketsMap = {}, teamsMap = {};
+  CACHED_LINKS.forEach(function(l){
     if(l.teams && Array.isArray(l.teams)){
-      l.teams.forEach(function(tm){
-        if(!teamsMap[tm.id]) teamsMap[tm.id] = {id: tm.id, name: tm.name, color: tm.color};
-      });
+      l.teams.forEach(function(tm){ if(!teamsMap[tm.id]) teamsMap[tm.id] = {id: tm.id, name: tm.name, color: tm.color}; });
     }
-    // Sau echipa link-ului (linkuri per echipa)
     if(l.link_team && !teamsMap['link_'+l.link_team]){
       teamsMap['link_'+l.link_team] = {id:'link_'+l.link_team, name:l.link_team, color:l.link_team_color||'#8b98a5'};
     }
-    // Proceseaza ticketele
     l.data.forEach(function(t){
       var num = String(t.t||'');
       if(!num) return;
-      var status = 'pending';
-      if(l.resolved[num]) status = 'resolved';
-      else if(l.nerezolvat[num]) status = 'nerezolvat';
+      var status = 'pending', statusTs = null;
+      var rEntry = l.resolved[num], nEntry = l.nerezolvat[num];
+      if(rEntry){ status = 'resolved'; statusTs = (typeof rEntry === 'object' && rEntry.ts) ? rEntry.ts : l.ts; }
+      else if(nEntry){ status = 'nerezolvat'; statusTs = (typeof nEntry === 'object' && nEntry.ts) ? nEntry.ts : l.ts; }
       var teamId = t.team_id || (l.link_team ? 'link_'+l.link_team : null);
       var teamName = t.team_name || l.link_team || null;
       var teamColor = t.team_color || l.link_team_color || '#8b98a5';
-      // Deduplicare: pastreaza ticketul din link-ul cel mai NOU
-      if(!ticketsMap[num] || l.ts > ticketsMap[num].sourceTs){
-        ticketsMap[num] = {
-          t: t,
-          status: status,
-          teamId: teamId,
-          teamName: teamName,
-          teamColor: teamColor,
-          sourceTs: l.ts,
-          sourceCode: l.code
-        };
+      var existing = ticketsMap[num];
+      var shouldReplace = !existing || (statusTs && (!existing.statusTs || statusTs > existing.statusTs)) || (status !== 'pending' && existing.status === 'pending');
+      if(shouldReplace){
+        ticketsMap[num] = {t:t, status:status, statusTs:statusTs, teamId:teamId, teamName:teamName, teamColor:teamColor, linkTs:l.ts};
       }
     });
   });
-
-  // Filtreaza pe echipa
-  var allTickets = Object.values(ticketsMap);
-  var tickets = FILTER_TEAM
-    ? allTickets.filter(function(x){ return x.teamId === FILTER_TEAM; })
-    : allTickets;
-
-  // Stats
-  var stTotal = tickets.length;
-  var stOk = tickets.filter(function(x){ return x.status==='resolved'; }).length;
-  var stWarn = tickets.filter(function(x){ return x.status==='nerezolvat'; }).length;
-  var stPend = tickets.filter(function(x){ return x.status==='pending'; }).length;
-  document.getElementById('stTotal').textContent = stTotal;
-  document.getElementById('stOk').textContent = stOk;
-  document.getElementById('stWarn').textContent = stWarn;
-  document.getElementById('stPend').textContent = stPend;
-
-  // Filtru echipe UI
+  return { tickets: Object.values(ticketsMap), teams: teamsMap };
+}
+function renderAll(){
+  var proc = processTickets();
+  var allTickets = proc.tickets, teamsMap = proc.teams;
+  var tickets = FILTER_TEAM ? allTickets.filter(function(x){ return x.teamId === FILTER_TEAM; }) : allTickets;
   var teamFilterEl = document.getElementById('teamFilter');
   var teamButtonsHtml = '<button class="filter-btn'+(FILTER_TEAM===''?' on':'')+'" data-tid="" onclick="setTeam(\'\')">Toate</button>';
   Object.values(teamsMap).forEach(function(tm){
@@ -265,78 +400,538 @@ function renderAll(){
     teamButtonsHtml += '<button class="filter-btn'+(on?' on':'')+'" data-tid="'+tm.id+'" onclick="setTeam(\''+tm.id+'\')" style="'+(on?'background:'+tm.color+';border-color:'+tm.color:'color:'+tm.color+';border-color:'+tm.color)+'">'+tm.name+' ('+count+')</button>';
   });
   teamFilterEl.innerHTML = teamButtonsHtml;
-
-  // Progres pe echipe
+  if(CURRENT_TAB === 'live') renderLive(tickets, teamsMap);
+  else if(CURRENT_TAB === 'stats') renderStats(tickets, teamsMap);
+  else if(CURRENT_TAB === 'trends') renderTrends(allTickets, teamsMap);
+}
+function renderLive(tickets, teamsMap){
+  var stOk = tickets.filter(function(x){ return x.status==='resolved'; }).length;
+  var stWarn = tickets.filter(function(x){ return x.status==='nerezolvat'; }).length;
+  var stPend = tickets.filter(function(x){ return x.status==='pending'; }).length;
+  document.getElementById('stTotal').textContent = tickets.length;
+  document.getElementById('stOk').textContent = stOk;
+  document.getElementById('stWarn').textContent = stWarn;
+  document.getElementById('stPend').textContent = stPend;
   var teamsList = document.getElementById('teamsList');
   var activeTeams = Object.values(teamsMap).map(function(tm){
-    var tt = allTickets.filter(function(x){ return x.teamId === tm.id; });
-    return {
-      team: tm,
-      total: tt.length,
+    var tt = tickets.filter(function(x){ return x.teamId === tm.id; });
+    return { team: tm, total: tt.length,
       ok: tt.filter(function(x){ return x.status==='resolved'; }).length,
       warn: tt.filter(function(x){ return x.status==='nerezolvat'; }).length,
-      pend: tt.filter(function(x){ return x.status==='pending'; }).length
-    };
+      pend: tt.filter(function(x){ return x.status==='pending'; }).length };
   }).filter(function(x){ return x.total > 0; }).sort(function(a,b){ return b.total - a.total; });
-
   if(activeTeams.length === 0){
-    teamsList.innerHTML = '<div class="empty">Nicio echipă activă în perioada selectată</div>';
+    teamsList.innerHTML = '<div class="empty">Nicio echipă activă</div>';
   } else {
     teamsList.innerHTML = activeTeams.map(function(x){
-      var doneCount = x.ok + x.warn;
-      var pct = x.total > 0 ? Math.round((doneCount / x.total) * 100) : 0;
+      var pct = x.total > 0 ? Math.round(((x.ok + x.warn) / x.total) * 100) : 0;
       return '<div class="team-row">'+
         '<span class="team-dot" style="background:'+x.team.color+'"></span>'+
         '<span class="team-name" style="color:'+x.team.color+'">'+x.team.name+'</span>'+
         '<div class="team-bar"><div class="team-bar-fill" style="width:'+pct+'%;background:'+x.team.color+'"></div></div>'+
-        '<div class="team-stats">'+
-          '<span class="st-ok">✓ '+x.ok+'</span>'+
-          '<span class="st-warn">⚠ '+x.warn+'</span>'+
-          '<span class="st-pend">⏳ '+x.pend+'</span>'+
-          '<span style="font-weight:800;color:'+x.team.color+'">'+pct+'%</span>'+
-        '</div>'+
+        '<div class="team-stats"><span class="st-ok">✓ '+x.ok+'</span><span class="st-warn">⚠ '+x.warn+'</span><span class="st-pend">⏳ '+x.pend+'</span><span style="font-weight:800;color:'+x.team.color+'">'+pct+'%</span></div>'+
       '</div>';
     }).join('');
   }
-
-  // Activitate recenta - doar ticketele finalizate (resolved/nerezolvat)
-  var actions = tickets.filter(function(x){ return x.status !== 'pending'; })
-    .sort(function(a,b){ return b.sourceTs - a.sourceTs; })
-    .slice(0, 50);
-
+  var actions = tickets.filter(function(x){ return x.status !== 'pending'; }).sort(function(a,b){ return (b.statusTs||0) - (a.statusTs||0); }).slice(0, 50);
   var actionsList = document.getElementById('actionsList');
   if(actions.length === 0){
-    actionsList.innerHTML = '<div class="empty">Nicio activitate încă. Colegii nu au marcat nimic în această perioadă.</div>';
+    actionsList.innerHTML = '<div class="empty">Nicio activitate încă</div>';
   } else {
     var currentKey = actions.map(function(a){ return a.t.t + ':' + a.status; }).join('|');
-    var newKey = previousActionsKey;
     var isFirstRun = previousActionsKey === '';
     actionsList.innerHTML = actions.map(function(a){
       var num = String(a.t.t||'');
-      var isNew = !isFirstRun && previousActionsKey.indexOf(num + ':' + a.status) === -1 && previousActionsKey !== '';
-      var timeStr = new Date(a.sourceTs).toLocaleTimeString('ro-RO', {hour:'2-digit',minute:'2-digit'});
+      var isNew = !isFirstRun && previousActionsKey.indexOf(num + ':' + a.status) === -1;
+      var timeStr = new Date(a.statusTs || a.linkTs).toLocaleTimeString('ro-RO', {hour:'2-digit',minute:'2-digit'});
       var icon = a.status === 'resolved' ? '<span style="color:var(--ok)">✓</span>' : '<span style="color:var(--warn)">⚠</span>';
       var teamBadge = a.teamName ? '<span class="act-team" style="color:'+a.teamColor+'">'+a.teamName+'</span>' : '<span class="act-team" style="color:var(--t3)">—</span>';
       return '<div class="act-row'+(isNew?' new':'')+'">'+
-        '<span class="act-time">'+timeStr+'</span>'+
-        '<span class="act-icon">'+icon+'</span>'+
-        teamBadge+
+        '<span class="act-time">'+timeStr+'</span><span>'+icon+'</span>'+teamBadge+
         '<span class="act-num">#'+num+'</span>'+
-        '<span class="act-obj">'+(a.t.ob||a.t.b||'—')+' · '+(a.t.l||'')+'</span>'+
-      '</div>';
+        '<span class="act-obj">'+(a.t.ob||a.t.b||'—')+' · '+(a.t.l||'')+'</span></div>';
     }).join('');
     previousActionsKey = currentKey;
   }
 }
+function renderStats(tickets, teamsMap){
+  var teamRates = Object.values(teamsMap).map(function(tm){
+    var tt = tickets.filter(function(x){ return x.teamId === tm.id; });
+    var ok = tt.filter(function(x){ return x.status==='resolved'; }).length;
+    var done = tt.filter(function(x){ return x.status!=='pending'; }).length;
+    return { team: tm, ok: ok, done: done, total: tt.length, rate: done > 0 ? Math.round((ok / done) * 100) : 0 };
+  }).filter(function(x){ return x.total > 0; });
+  var topPerf = document.getElementById('topPerformer');
+  if(teamRates.length > 0){
+    var top = teamRates.slice().sort(function(a,b){ return b.ok - a.ok; })[0];
+    topPerf.innerHTML = '<div class="top-perf"><div class="trophy">🏆</div>'+
+      '<div class="name" style="color:'+top.team.color+'">'+top.team.name+'</div>'+
+      '<div class="subtitle">'+top.ok+' tickete rezolvate · rata '+top.rate+'% · '+top.total+' total</div></div>';
+  } else {
+    topPerf.innerHTML = '<div class="section"><div class="empty">Nu sunt date</div></div>';
+  }
+  var rateChart = document.getElementById('teamRateChart');
+  if(teamRates.length === 0){ rateChart.innerHTML = '<div class="empty">Nu sunt date</div>'; }
+  else {
+    rateChart.innerHTML = teamRates.slice().sort(function(a,b){ return b.rate - a.rate; }).map(function(x){
+      return '<div class="bar-item">'+
+        '<span class="label" style="color:'+x.team.color+'">'+x.team.name+'</span>'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+x.rate+'%;background:'+x.team.color+'">'+(x.rate>15?x.rate+'%':'')+'</div></div>'+
+        '<span class="value">'+x.ok+'/'+x.done+'</span></div>';
+    }).join('');
+  }
+  var typeChart = document.getElementById('typeChart');
+  var typeCounts = {};
+  tickets.forEach(function(x){ var ty = x.t.ty || '?'; typeCounts[ty] = (typeCounts[ty] || 0) + 1; });
+  var typesArr = Object.keys(typeCounts).map(function(k){ return {name:k, count:typeCounts[k]}; }).sort(function(a,b){ return b.count-a.count; });
+  var maxType = typesArr.length > 0 ? typesArr[0].count : 1;
+  if(typesArr.length === 0){ typeChart.innerHTML = '<div class="empty">Nu sunt date</div>'; }
+  else {
+    typeChart.innerHTML = typesArr.map(function(x){
+      var pct = maxType > 0 ? Math.round((x.count / maxType) * 100) : 0;
+      var pctTotal = tickets.length > 0 ? Math.round((x.count / tickets.length) * 100) : 0;
+      return '<div class="bar-item"><span class="label">'+x.name+'</span>'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%">'+(pct>15?pctTotal+'%':'')+'</div></div>'+
+        '<span class="value">'+x.count+'</span></div>';
+    }).join('');
+  }
+  var locChart = document.getElementById('locChart');
+  var locCounts = {};
+  tickets.forEach(function(x){ var l = x.t.l || '—'; locCounts[l] = (locCounts[l] || 0) + 1; });
+  var locsArr = Object.keys(locCounts).map(function(k){ return {name:k, count:locCounts[k]}; }).sort(function(a,b){ return b.count-a.count; }).slice(0,10);
+  var maxLoc = locsArr.length > 0 ? locsArr[0].count : 1;
+  if(locsArr.length === 0){ locChart.innerHTML = '<div class="empty">Nu sunt date</div>'; }
+  else {
+    locChart.innerHTML = locsArr.map(function(x){
+      var pct = maxLoc > 0 ? Math.round((x.count / maxLoc) * 100) : 0;
+      return '<div class="bar-item"><span class="label">'+x.name+'</span>'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:var(--warn)"></div></div>'+
+        '<span class="value">'+x.count+'</span></div>';
+    }).join('');
+  }
+}
+function renderTrends(allTickets, teamsMap){
+  var now = new Date();
+  var days = [];
+  // Numar de zile in functie de perioada
+  var numDays = 7;
+  if(FILTER_PERIOD === 'day') numDays = 1;
+  else if(FILTER_PERIOD === 'week') numDays = 7;
+  else if(FILTER_PERIOD === 'month'){
+    // De la 1 ale lunii pana azi
+    numDays = now.getDate();
+  } else if(FILTER_PERIOD === 'all') numDays = 30;
+  for(var i=numDays-1; i>=0; i--){
+    var d = new Date(now.getTime() - i * 24 * 3600 * 1000);
+    days.push({ date: d, key: d.toISOString().slice(0,10),
+      label: d.toLocaleDateString('ro-RO', {weekday:'short', day:'numeric', month:'short'}),
+      resolved: 0, nerezolvat: 0, total: 0 });
+  }
+  var dayMap = {};
+  days.forEach(function(d){ dayMap[d.key] = d; });
+  // Actualizeaza titluri in functie de perioada
+  var titleText = '📈 Evoluție ';
+  if(FILTER_PERIOD === 'day') titleText += 'ziua curentă';
+  else if(FILTER_PERIOD === 'week') titleText += 'săptămâna curentă';
+  else if(FILTER_PERIOD === 'month') titleText += 'luna curentă';
+  else titleText += 'ultimele 30 zile';
+  var trendTitleEl = document.getElementById('trendTitle');
+  if(trendTitleEl) trendTitleEl.textContent = titleText;
+  allTickets.forEach(function(x){
+    if(x.status === 'pending') return;
+    var ts = x.statusTs || x.linkTs;
+    if(!ts) return;
+    var k = new Date(ts).toISOString().slice(0,10);
+    if(dayMap[k]){
+      if(x.status === 'resolved') dayMap[k].resolved++;
+      else dayMap[k].nerezolvat++;
+      dayMap[k].total++;
+    }
+  });
+  var maxDay = Math.max.apply(null, days.map(function(d){ return d.total; }).concat([1]));
+  var trendEl = document.getElementById('trendChart');
+  trendEl.innerHTML = days.map(function(d){
+    var pct = maxDay > 0 ? Math.round((d.total / maxDay) * 100) : 0;
+    return '<div class="bar-item"><span class="label" style="font-size:12px">'+d.label+'</span>'+
+      '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%">'+(pct>10?d.total:'')+'</div></div>'+
+      '<span class="value">✓'+d.resolved+' ⚠'+d.nerezolvat+'</span></div>';
+  }).join('');
+  var teamCompareEl = document.getElementById('teamCompareChart');
+  var teamsWithData = Object.values(teamsMap);
+  if(teamsWithData.length === 0){ teamCompareEl.innerHTML = '<div class="empty">Nu sunt echipe</div>'; }
+  else {
+    var html = '<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:12px">'+
+      '<thead><tr><th style="text-align:left;padding:8px;color:var(--t2);border-bottom:1px solid var(--br)">Echipa</th>';
+    days.forEach(function(d){ html += '<th style="padding:8px;text-align:center;color:var(--t2);border-bottom:1px solid var(--br);font-size:11px">'+d.label.split(' ')[0]+'</th>'; });
+    html += '<th style="padding:8px;text-align:right;color:var(--t2);border-bottom:1px solid var(--br)">Total</th></tr></thead><tbody>';
+    var anyData = false;
+    teamsWithData.forEach(function(tm){
+      var teamDays = days.map(function(d){
+        return allTickets.filter(function(x){
+          if(x.teamId !== tm.id || x.status === 'pending') return false;
+          var ts = x.statusTs || x.linkTs;
+          return ts && new Date(ts).toISOString().slice(0,10) === d.key;
+        }).length;
+      });
+      var teamTotal = teamDays.reduce(function(a,b){return a+b;},0);
+      if(teamTotal === 0) return;
+      anyData = true;
+      html += '<tr><td style="padding:8px;font-weight:700;color:'+tm.color+';border-bottom:1px solid var(--br-lt)">'+tm.name+'</td>';
+      teamDays.forEach(function(v){
+        html += '<td style="padding:8px;text-align:center;border-bottom:1px solid var(--br-lt);color:'+(v>0?tm.color:'var(--t3)')+';font-weight:'+(v>0?'700':'400')+'">'+(v||'—')+'</td>';
+      });
+      html += '<td style="padding:8px;text-align:right;font-weight:800;border-bottom:1px solid var(--br-lt)">'+teamTotal+'</td></tr>';
+    });
+    html += '</tbody></table></div>';
+    teamCompareEl.innerHTML = anyData ? html : '<div class="empty">Nu sunt date</div>';
+  }
+  var peakEl = document.getElementById('peakDays');
+  var sortedDays = days.slice().sort(function(a,b){ return b.total - a.total; }).slice(0, 7);
+  var maxPeak = sortedDays[0] ? sortedDays[0].total : 1;
+  if(!sortedDays[0] || sortedDays[0].total === 0){
+    peakEl.innerHTML = '<div class="empty">Nu sunt date suficiente</div>';
+  } else {
+    peakEl.innerHTML = sortedDays.map(function(d, i){
+      var pct = maxPeak > 0 ? Math.round((d.total / maxPeak) * 100) : 0;
+      var medal = i === 0 ? '🥇' : (i === 1 ? '🥈' : (i === 2 ? '🥉' : '·'));
+      return '<div class="bar-item"><span class="label">'+medal+' '+d.label+'</span>'+
+        '<div class="bar-track"><div class="bar-fill" style="width:'+pct+'%;background:var(--ok)"></div></div>'+
+        '<span class="value">'+d.total+'</span></div>';
+    }).join('');
+  }
+}
+// ============ COMPARE ============
+var COMPARE_LINKS_CACHE = null;
+var COMPARE_FETCH_TS = 0;
 
-// Init
+function initCompareUI(){
+  var today = new Date();
+  var yesterday = new Date(today.getTime() - 86400000);
+  document.getElementById('cmpDateA').valueAsDate = today;
+  document.getElementById('cmpDateB').valueAsDate = yesterday;
+}
+
+function getBoundsForRef(type, refDate){
+  var d = new Date(refDate);
+  var year = d.getFullYear(), month = d.getMonth(), date = d.getDate();
+  if(type === 'day'){
+    var start = new Date(year, month, date).getTime();
+    var end = new Date(year, month, date + 1).getTime();
+    return { start: start, end: end, label: d.toLocaleDateString('ro-RO', {weekday:'long', day:'numeric', month:'long', year:'numeric'}) };
+  }
+  if(type === 'week'){
+    var day = d.getDay();
+    var diff = day === 0 ? 6 : day - 1;
+    var monday = new Date(year, month, date - diff);
+    var nextMon = new Date(year, month, date - diff + 7);
+    var sunday = new Date(year, month, date - diff + 6);
+    return {
+      start: monday.getTime(), end: nextMon.getTime(),
+      label: 'Săpt. ' + monday.toLocaleDateString('ro-RO', {day:'numeric', month:'short'}) + ' — ' + sunday.toLocaleDateString('ro-RO', {day:'numeric', month:'short', year:'numeric'})
+    };
+  }
+  if(type === 'month'){
+    var start = new Date(year, month, 1).getTime();
+    var end = new Date(year, month + 1, 1).getTime();
+    return { start: start, end: end, label: d.toLocaleDateString('ro-RO', {month:'long', year:'numeric'}) };
+  }
+}
+
+function getPreviousRef(type, refDate){
+  var d = new Date(refDate);
+  if(type === 'day') return new Date(d.getTime() - 86400000);
+  if(type === 'week') return new Date(d.getTime() - 7 * 86400000);
+  if(type === 'month') return new Date(d.getFullYear(), d.getMonth() - 1, d.getDate());
+}
+
+function setPreviousPeriod(){
+  var type = document.getElementById('cmpType').value;
+  var dateA = document.getElementById('cmpDateA').valueAsDate;
+  if(!dateA){ showToast('❌ Alege întâi Perioada A'); return; }
+  var prev = getPreviousRef(type, dateA);
+  document.getElementById('cmpDateB').valueAsDate = prev;
+}
+
+function onCompareTypeChange(){
+  // Nu re-run comparatie automat, doar reseteaza labeling
+  document.getElementById('cmpPeriodLabel').textContent = '';
+}
+
+function processTicketsInWindow(links, startTs, endTs){
+  var ticketsMap = {}, teamsMap = {};
+  links.forEach(function(l){
+    if(l.teams && Array.isArray(l.teams)){
+      l.teams.forEach(function(tm){ if(!teamsMap[tm.id]) teamsMap[tm.id] = {id: tm.id, name: tm.name, color: tm.color}; });
+    }
+    if(l.link_team && !teamsMap['link_'+l.link_team]){
+      teamsMap['link_'+l.link_team] = {id:'link_'+l.link_team, name:l.link_team, color:l.link_team_color||'#8b98a5'};
+    }
+    l.data.forEach(function(t){
+      var num = String(t.t||'');
+      if(!num) return;
+      var status = 'pending', statusTs = null;
+      var rEntry = l.resolved[num], nEntry = l.nerezolvat[num];
+      if(rEntry){ status = 'resolved'; statusTs = (typeof rEntry === 'object' && rEntry.ts) ? rEntry.ts : l.ts; }
+      else if(nEntry){ status = 'nerezolvat'; statusTs = (typeof nEntry === 'object' && nEntry.ts) ? nEntry.ts : l.ts; }
+      // Filtrare: acțiunea trebuie sa cada in fereastra
+      var ts = statusTs || l.ts;
+      if(ts < startTs || ts >= endTs) return;
+      var teamId = t.team_id || (l.link_team ? 'link_'+l.link_team : null);
+      var teamName = t.team_name || l.link_team || null;
+      var teamColor = t.team_color || l.link_team_color || '#8b98a5';
+      var existing = ticketsMap[num];
+      var shouldReplace = !existing || (statusTs && (!existing.statusTs || statusTs > existing.statusTs));
+      if(shouldReplace){
+        ticketsMap[num] = { t:t, status:status, statusTs:statusTs, teamId:teamId, teamName:teamName, teamColor:teamColor, linkTs:l.ts };
+      }
+    });
+  });
+  return { tickets: Object.values(ticketsMap), teams: teamsMap };
+}
+
+function fetchAllLinks(cb){
+  // Cache 60 sec pentru a nu face fetch la fiecare click
+  if(COMPARE_LINKS_CACHE && (Date.now() - COMPARE_FETCH_TS < 60000)){
+    cb(COMPARE_LINKS_CACHE);
+    return;
+  }
+  fetch(FIREBASE_URL + '/t.json').then(function(r){ return r.json(); }).then(function(all){
+    if(!all){ cb([]); return; }
+    var links = [];
+    Object.keys(all).forEach(function(code){
+      var entry = all[code];
+      if(!entry || !entry.data) return;
+      links.push({
+        code: code, ts: entry.ts || 0, teams: entry.teams || null,
+        link_team: entry.link_team || null, link_team_color: entry.link_team_color || null,
+        data: entry.data, resolved: entry.resolved || {}, nerezolvat: entry.nerezolvat || {}
+      });
+    });
+    COMPARE_LINKS_CACHE = links;
+    COMPARE_FETCH_TS = Date.now();
+    cb(links);
+  }).catch(function(){ cb([]); });
+}
+
+function runCompare(){
+  var type = document.getElementById('cmpType').value;
+  var dateA = document.getElementById('cmpDateA').valueAsDate;
+  var dateB = document.getElementById('cmpDateB').valueAsDate;
+  if(!dateA || !dateB){ showToast('❌ Alege ambele perioade'); return; }
+  var bA = getBoundsForRef(type, dateA);
+  var bB = getBoundsForRef(type, dateB);
+  document.getElementById('cmpPeriodLabel').innerHTML = '🅐 <b style="color:var(--pr)">'+bA.label+'</b> vs 🅑 <b style="color:var(--warn)">'+bB.label+'</b>';
+  document.getElementById('cmpEmpty').style.display = 'none';
+  document.getElementById('cmpResults').style.display = 'block';
+  fetchAllLinks(function(links){
+    var procA = processTicketsInWindow(links, bA.start, bA.end);
+    var procB = processTicketsInWindow(links, bB.start, bB.end);
+    renderCompareResults(procA, procB, bA, bB);
+  });
+}
+
+function fmtDiff(a, b, isPct){
+  var diff = a - b;
+  var pct = b !== 0 ? Math.round((diff / b) * 100) : (a > 0 ? 100 : 0);
+  var arrow = diff > 0 ? '⬆' : (diff < 0 ? '⬇' : '=');
+  var cls = diff > 0 ? 'up' : (diff < 0 ? 'down' : 'eq');
+  var sign = diff > 0 ? '+' : '';
+  var pctStr = b !== 0 ? ' ('+sign+pct+'%)' : '';
+  return '<span class="cmp-diff '+cls+'">'+arrow+' '+sign+diff+pctStr+'</span>';
+}
+function fmtDiffPctOnly(pctA, pctB){
+  var diff = pctA - pctB;
+  var arrow = diff > 0 ? '⬆' : (diff < 0 ? '⬇' : '=');
+  var cls = diff > 0 ? 'up' : (diff < 0 ? 'down' : 'eq');
+  var sign = diff > 0 ? '+' : '';
+  return '<span class="cmp-diff '+cls+'">'+arrow+' '+sign+diff+' pp</span>';
+}
+
+function renderCompareResults(procA, procB, bA, bB){
+  var tA = procA.tickets, tB = procB.tickets;
+  var totA = tA.length, totB = tB.length;
+  var okA = tA.filter(function(x){ return x.status==='resolved'; }).length;
+  var okB = tB.filter(function(x){ return x.status==='resolved'; }).length;
+  var warnA = tA.filter(function(x){ return x.status==='nerezolvat'; }).length;
+  var warnB = tB.filter(function(x){ return x.status==='nerezolvat'; }).length;
+  var pendA = tA.filter(function(x){ return x.status==='pending'; }).length;
+  var pendB = tB.filter(function(x){ return x.status==='pending'; }).length;
+  var doneA = okA + warnA, doneB = okB + warnB;
+  var rateA = doneA > 0 ? Math.round((okA/doneA)*100) : 0;
+  var rateB = doneB > 0 ? Math.round((okB/doneB)*100) : 0;
+
+  // Summary
+  var sum = document.getElementById('cmpSummary');
+  var rows = [
+    { label: 'Total tickete', a: totA, b: totB, sub: '' },
+    { label: 'Rezolvate', a: okA, b: okB, sub: 'ok' },
+    { label: 'Nerezolvate', a: warnA, b: warnB, sub: 'warn' },
+    { label: 'În așteptare', a: pendA, b: pendB, sub: 'pend' }
+  ];
+  var html = '<div class="cmp-hdr"><span>Metric</span><span class="a">🅐 '+bA.label+'</span><span class="b">🅑 '+bB.label+'</span></div>';
+  rows.forEach(function(r){
+    html += '<div class="cmp-row">'+
+      '<div class="cmp-label">'+r.label+'</div>'+
+      '<div style="text-align:center"><span class="cmp-val a"><span class="num">'+r.a+'</span></span></div>'+
+      '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="cmp-val b"><span class="num">'+r.b+'</span></span>'+fmtDiff(r.a, r.b)+'</div>'+
+    '</div>';
+  });
+  // Rata rezolvare
+  html += '<div class="cmp-row" style="background:rgba(74,144,226,.05);border-radius:8px;padding:14px 12px">'+
+    '<div class="cmp-label" style="font-weight:700">📊 Rata rezolvare</div>'+
+    '<div style="text-align:center"><span class="cmp-val a"><span class="num">'+rateA+'%</span></span></div>'+
+    '<div style="display:flex;justify-content:space-between;align-items:center;gap:10px"><span class="cmp-val b"><span class="num">'+rateB+'%</span></span>'+fmtDiffPctOnly(rateA, rateB)+'</div>'+
+  '</div>';
+  sum.innerHTML = html;
+
+  // Echipe
+  var allTeamIds = {};
+  Object.keys(procA.teams).forEach(function(id){ allTeamIds[id] = procA.teams[id]; });
+  Object.keys(procB.teams).forEach(function(id){ if(!allTeamIds[id]) allTeamIds[id] = procB.teams[id]; });
+  var teamsHtml = '<table class="cmp-tbl"><thead><tr>'+
+    '<th>Echipa</th><th class="a">🅐 Total</th><th class="a">🅐 ✓</th><th class="b">🅑 Total</th><th class="b">🅑 ✓</th><th class="d">Δ Rezolv</th>'+
+  '</tr></thead><tbody>';
+  var teamRows = Object.values(allTeamIds).map(function(tm){
+    var aT = tA.filter(function(x){ return x.teamId === tm.id; });
+    var bT = tB.filter(function(x){ return x.teamId === tm.id; });
+    var aOk = aT.filter(function(x){ return x.status==='resolved'; }).length;
+    var bOk = bT.filter(function(x){ return x.status==='resolved'; }).length;
+    return { team:tm, aTotal:aT.length, aOk:aOk, bTotal:bT.length, bOk:bOk };
+  }).filter(function(x){ return x.aTotal > 0 || x.bTotal > 0; }).sort(function(a,b){ return b.aOk - a.aOk; });
+  if(teamRows.length === 0){
+    teamsHtml = '<div class="empty">Nicio echipă în perioadele selectate</div>';
+  } else {
+    teamRows.forEach(function(x){
+      var diff = x.aOk - x.bOk;
+      var arrow = diff > 0 ? '<span style="color:var(--ok)">⬆ +'+diff+'</span>' : (diff < 0 ? '<span style="color:var(--err)">⬇ '+diff+'</span>' : '<span style="color:var(--t3)">= 0</span>');
+      teamsHtml += '<tr>'+
+        '<td style="font-weight:700;color:'+x.team.color+'">● '+x.team.name+'</td>'+
+        '<td class="a">'+x.aTotal+'</td><td class="a">'+x.aOk+'</td>'+
+        '<td class="b">'+x.bTotal+'</td><td class="b">'+x.bOk+'</td>'+
+        '<td class="d">'+arrow+'</td>'+
+      '</tr>';
+    });
+    teamsHtml += '</tbody></table>';
+  }
+  document.getElementById('cmpTeams').innerHTML = teamsHtml;
+
+  // Tipuri
+  var allTypes = {};
+  tA.forEach(function(x){ var t = x.t.ty || '?'; allTypes[t] = allTypes[t] || {a:0,b:0}; allTypes[t].a++; });
+  tB.forEach(function(x){ var t = x.t.ty || '?'; allTypes[t] = allTypes[t] || {a:0,b:0}; allTypes[t].b++; });
+  var typesArr = Object.keys(allTypes).map(function(k){ return {name:k, a:allTypes[k].a, b:allTypes[k].b}; }).sort(function(a,b){ return (b.a+b.b) - (a.a+a.b); });
+  var typesHtml;
+  if(typesArr.length === 0){
+    typesHtml = '<div class="empty">Nu sunt date</div>';
+  } else {
+    typesHtml = '<table class="cmp-tbl"><thead><tr><th>Tip</th><th class="a">🅐</th><th class="b">🅑</th><th class="d">Δ</th></tr></thead><tbody>';
+    typesArr.forEach(function(x){
+      var diff = x.a - x.b;
+      var arrow = diff > 0 ? '<span style="color:var(--ok)">⬆ +'+diff+'</span>' : (diff < 0 ? '<span style="color:var(--err)">⬇ '+diff+'</span>' : '<span style="color:var(--t3)">=</span>');
+      typesHtml += '<tr><td>'+x.name+'</td><td class="a">'+x.a+'</td><td class="b">'+x.b+'</td><td class="d">'+arrow+'</td></tr>';
+    });
+    typesHtml += '</tbody></table>';
+  }
+  document.getElementById('cmpTypes').innerHTML = typesHtml;
+
+  // Localitati top
+  var allLocs = {};
+  tA.forEach(function(x){ var l = x.t.l || '—'; allLocs[l] = allLocs[l] || {a:0,b:0}; allLocs[l].a++; });
+  tB.forEach(function(x){ var l = x.t.l || '—'; allLocs[l] = allLocs[l] || {a:0,b:0}; allLocs[l].b++; });
+  var locsArr = Object.keys(allLocs).map(function(k){ return {name:k, a:allLocs[k].a, b:allLocs[k].b}; }).sort(function(a,b){ return (b.a+b.b) - (a.a+a.b); }).slice(0,15);
+  var locsHtml;
+  if(locsArr.length === 0){
+    locsHtml = '<div class="empty">Nu sunt date</div>';
+  } else {
+    locsHtml = '<table class="cmp-tbl"><thead><tr><th>Localitate</th><th class="a">🅐</th><th class="b">🅑</th><th class="d">Δ</th></tr></thead><tbody>';
+    locsArr.forEach(function(x){
+      var diff = x.a - x.b;
+      var arrow = diff > 0 ? '<span style="color:var(--ok)">⬆ +'+diff+'</span>' : (diff < 0 ? '<span style="color:var(--err)">⬇ '+diff+'</span>' : '<span style="color:var(--t3)">=</span>');
+      locsHtml += '<tr><td>'+x.name+'</td><td class="a">'+x.a+'</td><td class="b">'+x.b+'</td><td class="d">'+arrow+'</td></tr>';
+    });
+    locsHtml += '</tbody></table>';
+  }
+  document.getElementById('cmpLocs').innerHTML = locsHtml;
+}
+
+function exportCompareCSV(){
+  var type = document.getElementById('cmpType').value;
+  var dateA = document.getElementById('cmpDateA').valueAsDate;
+  var dateB = document.getElementById('cmpDateB').valueAsDate;
+  if(!dateA || !dateB){ showToast('❌ Alege ambele perioade'); return; }
+  var bA = getBoundsForRef(type, dateA);
+  var bB = getBoundsForRef(type, dateB);
+  fetchAllLinks(function(links){
+    var procA = processTicketsInWindow(links, bA.start, bA.end);
+    var procB = processTicketsInWindow(links, bB.start, bB.end);
+    var tA = procA.tickets, tB = procB.tickets;
+    var csv = 'Metric,A ('+bA.label+'),B ('+bB.label+'),Diferenta\n';
+    var okA = tA.filter(function(x){ return x.status==='resolved'; }).length;
+    var okB = tB.filter(function(x){ return x.status==='resolved'; }).length;
+    var wA = tA.filter(function(x){ return x.status==='nerezolvat'; }).length;
+    var wB = tB.filter(function(x){ return x.status==='nerezolvat'; }).length;
+    var pA = tA.filter(function(x){ return x.status==='pending'; }).length;
+    var pB = tB.filter(function(x){ return x.status==='pending'; }).length;
+    csv += '"Total",'+tA.length+','+tB.length+','+(tA.length-tB.length)+'\n';
+    csv += '"Rezolvate",'+okA+','+okB+','+(okA-okB)+'\n';
+    csv += '"Nerezolvate",'+wA+','+wB+','+(wA-wB)+'\n';
+    csv += '"In asteptare",'+pA+','+pB+','+(pA-pB)+'\n';
+    var rateA = (okA+wA) > 0 ? Math.round((okA/(okA+wA))*100) : 0;
+    var rateB = (okB+wB) > 0 ? Math.round((okB/(okB+wB))*100) : 0;
+    csv += '"Rata rezolvare %",'+rateA+','+rateB+','+(rateA-rateB)+'\n\n';
+    // Echipe
+    csv += 'ECHIPA,A Total,A Rezolv,B Total,B Rezolv,Diff Rezolv\n';
+    var allTeamIds = {};
+    Object.keys(procA.teams).forEach(function(id){ allTeamIds[id] = procA.teams[id]; });
+    Object.keys(procB.teams).forEach(function(id){ if(!allTeamIds[id]) allTeamIds[id] = procB.teams[id]; });
+    Object.values(allTeamIds).forEach(function(tm){
+      var aT = tA.filter(function(x){ return x.teamId === tm.id; });
+      var bT = tB.filter(function(x){ return x.teamId === tm.id; });
+      var aOk = aT.filter(function(x){ return x.status==='resolved'; }).length;
+      var bOk = bT.filter(function(x){ return x.status==='resolved'; }).length;
+      if(aT.length === 0 && bT.length === 0) return;
+      csv += '"'+tm.name+'",'+aT.length+','+aOk+','+bT.length+','+bOk+','+(aOk-bOk)+'\n';
+    });
+    var blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = 'compare-'+bA.label.replace(/\s+/g,'_')+'-vs-'+bB.label.replace(/\s+/g,'_')+'.csv';
+    a.click();
+    URL.revokeObjectURL(url);
+    showToast('✓ CSV compare descărcat');
+  });
+}
+
+function exportCSV(){
+  var proc = processTickets();
+  var tickets = FILTER_TEAM ? proc.tickets.filter(function(x){ return x.teamId === FILTER_TEAM; }) : proc.tickets;
+  if(tickets.length === 0){ showToast('❌ Nimic de exportat'); return; }
+  var headers = ['Ticket','Status','Echipa','Timp actiune','Account','Beneficiar','Obiectiv','Localitate','Judet','Tip','Adresa'];
+  var csv = headers.join(',') + '\n';
+  tickets.forEach(function(x){
+    var row = [x.t.t||'', x.status, x.teamName||'', x.statusTs?new Date(x.statusTs).toLocaleString('ro-RO'):'', x.t.a||'', x.t.b||'', x.t.ob||'', x.t.l||'', x.t.j||'', x.t.ty||'', x.t.ad||''];
+    csv += row.map(function(v){ return '"'+String(v).replace(/"/g,'""')+'"'; }).join(',') + '\n';
+  });
+  var blob = new Blob(['\ufeff'+csv], {type:'text/csv;charset=utf-8'});
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a');
+  a.href = url;
+  a.download = 'dashboard-'+new Date().toISOString().slice(0,10)+'.csv';
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('✓ CSV descărcat ('+tickets.length+' tickete)');
+}
+try {
+  var hidden = localStorage.getItem('dash_hidden');
+  if(hidden) VIEW_HIDDEN_CODES = JSON.parse(hidden);
+} catch(e){}
+var oneWeekAgo = Date.now() - (7*24*3600*1000);
+Object.keys(VIEW_HIDDEN_CODES).forEach(function(k){ if(VIEW_HIDDEN_CODES[k] < oneWeekAgo) delete VIEW_HIDDEN_CODES[k]; });
+initCompareUI();
 loadData();
 pollTimer = setInterval(loadData, POLL_INTERVAL);
-
-// Cleanup la close tab
-window.addEventListener('beforeunload', function(){
-  if(pollTimer) clearInterval(pollTimer);
-});
+window.addEventListener('beforeunload', function(){ if(pollTimer) clearInterval(pollTimer); });
 </script>
 </body>
 </html>
