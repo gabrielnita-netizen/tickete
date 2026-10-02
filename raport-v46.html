@@ -505,12 +505,12 @@ var SHEET_ID = '1feTSTO4FCFTUJBxiD0rd2ICF30jZE9pX6oihHxznkAY';
 
 var SHARE_CODE = null;
 
-// Persistenta status rezolvat in Firebase
+// Persistenta status rezolvat in Firebase (cu timestamp pentru dashboard)
 function saveResolvedStatus(ticketNumber, resolved){
   if(!SHARE_CODE) return;
   var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/resolved.json';
   var payload = {};
-  payload[ticketNumber] = resolved ? true : null;
+  payload[ticketNumber] = resolved ? {ts: Date.now()} : null;
   var xhr = new XMLHttpRequest();
   xhr.open('PATCH', url, true);
   xhr.setRequestHeader('Content-Type', 'application/json');
@@ -521,7 +521,7 @@ function saveNerezolvatStatus(ticketNumber, nerezolvat){
   if(!SHARE_CODE) return;
   var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/nerezolvat.json';
   var payload = {};
-  payload[ticketNumber] = nerezolvat ? true : null;
+  payload[ticketNumber] = nerezolvat ? {ts: Date.now()} : null;
   var xhr = new XMLHttpRequest();
   xhr.open('PATCH', url, true);
   xhr.setRequestHeader('Content-Type', 'application/json');
@@ -820,6 +820,12 @@ function buildWAMessage(r, docs){
     msg = '\u26A0\uFE0F *TICKET NEREZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nStatus: NEREZOLVAT la '+ora;
   } else {
     msg = '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
+  }
+  // Date PV extrase prin OCR (daca exista)
+  if(r._pv_info){
+    msg += '\n\n📋 *Date PV detectate:*';
+    if(r._pv_info.nr) msg += '\nNr. PV: ' + r._pv_info.nr;
+    if(r._pv_info.data) msg += '\nData PV: ' + r._pv_info.data;
   }
   if(docs && docs.length > 0){
     msg += '\n\n📎 *Documente atașate:*';
@@ -1359,6 +1365,13 @@ function load(){
                 }
               }
             }
+            // PV info extras cu OCR
+            if(res.pv_info && typeof res.pv_info === 'object'){
+              for(var kp=0;kp<res.data.length;kp++){
+                var tnp = s(res.data[kp].t);
+                if(res.pv_info[tnp]) res.data[kp]._pv_info = res.pv_info[tnp];
+              }
+            }
             render(res.data);
             return;
           }
@@ -1832,20 +1845,35 @@ function acceptPage(){
     } catch(e){
       extracted = cropQuad(scanRawCanvas, scanCorners);
     }
-    // B&W filter doar cu OpenCV
-    if(scanFilterBW){
+    // Aplica filtru selectat
+    if(SCAN_FILTER_MODE === 'clahe'){
+      extracted = applyCLAHE(extracted);
+    } else if(SCAN_FILTER_MODE === 'bw' || scanFilterBW){
       extracted = applyBWFilter(extracted);
     }
   } else {
     // Fallback: crop simplu (fara perspectiva corectata)
     extracted = cropQuad(scanRawCanvas, scanCorners);
-    if(scanFilterBW){
-      // B&W simplu cu canvas 2D (fara adaptive threshold)
+    if(SCAN_FILTER_MODE === 'clahe'){
+      extracted = applyCLAHE(extracted);
+    } else if(SCAN_FILTER_MODE === 'bw' || scanFilterBW){
       extracted = applyBWFilterSimple(extracted);
     }
   }
 
-  scanPages.push({ canvas: extracted, dataUrl: extracted.toDataURL('image/jpeg', 0.92) });
+  // Detectare blur Laplacian (prag 100 = mediu) - avertizare dar nu blocare
+  var blurScore = calculateBlurScore(extracted);
+  if(blurScore !== null && blurScore < 100){
+    var msg = blurScore < 50 ? '⚠️ Imagine foarte blurată (score '+Math.round(blurScore)+'). Recomandat să refaci poza.' 
+                              : '⚠️ Imagine ușor blurată (score '+Math.round(blurScore)+'). Textul poate fi greu de citit.';
+    if(!confirm(msg + '\n\nContinui totuși cu această imagine?')){
+      // Refuzat - buton refa
+      retakePage();
+      return;
+    }
+  }
+  // Quality 0.95 (crescut de la 0.92) pentru mai mult detaliu text
+  scanPages.push({ canvas: extracted, dataUrl: extracted.toDataURL('image/jpeg', 0.95), blurScore: blurScore });
   scanRawCanvas = null;
   scanCorners = null;
   scanFilterBW = false;
@@ -1858,6 +1886,53 @@ function acceptPage(){
   document.getElementById('scan-filter-btn').style.display='none';
   document.getElementById('scan-filter-btn').textContent = '☀ Original';
   document.getElementById('scan-done-bar').classList.add('on');
+}
+
+// Blur detection: Laplacian variance (OpenCV)
+function calculateBlurScore(canvas){
+  if(!window.cv || !window.cv.Mat) return null;
+  try {
+    var src = cv.imread(canvas);
+    var gray = new cv.Mat();
+    cv.cvtColor(src, gray, cv.COLOR_RGBA2GRAY);
+    var laplacian = new cv.Mat();
+    cv.Laplacian(gray, laplacian, cv.CV_64F);
+    var mean = new cv.Mat(), stdDev = new cv.Mat();
+    cv.meanStdDev(laplacian, mean, stdDev);
+    var variance = Math.pow(stdDev.data64F[0], 2);
+    src.delete(); gray.delete(); laplacian.delete(); mean.delete(); stdDev.delete();
+    return variance;
+  } catch(e){
+    console.warn('Blur detection failed:', e);
+    return null;
+  }
+}
+
+// CLAHE - contrast adaptiv local, mai bun pentru documente decolorate/îngălbenite
+function applyCLAHE(canvas){
+  if(!window.cv || !window.cv.Mat) return canvas;
+  try {
+    var src = cv.imread(canvas);
+    var lab = new cv.Mat();
+    cv.cvtColor(src, lab, cv.COLOR_RGBA2RGB);
+    cv.cvtColor(lab, lab, cv.COLOR_RGB2Lab);
+    var channels = new cv.MatVector();
+    cv.split(lab, channels);
+    var clahe = new cv.CLAHE(3.0, new cv.Size(16, 16));
+    var lChan = channels.get(0);
+    var lEnhanced = new cv.Mat();
+    clahe.apply(lChan, lEnhanced);
+    channels.set(0, lEnhanced);
+    cv.merge(channels, lab);
+    cv.cvtColor(lab, lab, cv.COLOR_Lab2RGB);
+    cv.cvtColor(lab, src, cv.COLOR_RGB2RGBA);
+    cv.imshow(canvas, src);
+    src.delete(); lab.delete(); channels.delete(); clahe.delete(); lChan.delete(); lEnhanced.delete();
+    return canvas;
+  } catch(e){
+    console.warn('CLAHE failed:', e);
+    return canvas;
+  }
 }
 
 // B&W filter simplu (fara OpenCV) - luminozitate + contrast
@@ -1887,12 +1962,27 @@ function retakePage(){
   document.getElementById('scan-filter-btn').textContent = '☀ Original';
 }
 
+// Cycle: Original -> CLAHE (contrast îmbunătățit) -> B&W -> Original
+var SCAN_FILTER_MODE = 'original'; // 'original' | 'clahe' | 'bw'
 function toggleFilter(){
-  scanFilterBW = !scanFilterBW;
+  if(SCAN_FILTER_MODE === 'original') SCAN_FILTER_MODE = 'clahe';
+  else if(SCAN_FILTER_MODE === 'clahe') SCAN_FILTER_MODE = 'bw';
+  else SCAN_FILTER_MODE = 'original';
+  scanFilterBW = (SCAN_FILTER_MODE === 'bw');
   var btn = document.getElementById('scan-filter-btn');
-  btn.textContent = scanFilterBW ? '📄 B&W' : '☀ Original';
-  btn.style.background = scanFilterBW ? '#fff' : 'rgba(255,255,255,.15)';
-  btn.style.color = scanFilterBW ? '#000' : '#fff';
+  if(SCAN_FILTER_MODE === 'original'){
+    btn.textContent = '☀ Original';
+    btn.style.background = 'rgba(255,255,255,.15)';
+    btn.style.color = '#fff';
+  } else if(SCAN_FILTER_MODE === 'clahe'){
+    btn.textContent = '🎨 Contrast';
+    btn.style.background = '#4a90e2';
+    btn.style.color = '#fff';
+  } else {
+    btn.textContent = '📄 B&W';
+    btn.style.background = '#fff';
+    btn.style.color = '#000';
+  }
 }
 
 // B&W enhanced filter (ca CamScanner)
@@ -1935,6 +2025,83 @@ function updateScanPagesBtn(){
   var btn = document.getElementById('scan-pages-btn');
   btn.textContent = scanPages.length + ' pag';
   btn.style.background = scanPages.length > 0 ? 'var(--em)' : 'var(--tx)';
+}
+
+// ============================================================
+// OCR pentru extragere nr PV + data (Tesseract.js, 100% local)
+// ============================================================
+function loadTesseract(cb){
+  if(window.Tesseract){ cb(); return; }
+  var s = document.createElement('script');
+  s.src = 'https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js';
+  s.onload = cb;
+  s.onerror = function(){ cb(new Error('Nu s-a putut incarca Tesseract')); };
+  document.head.appendChild(s);
+}
+
+function extractPVInfo(canvas){
+  return new Promise(function(resolve, reject){
+    loadTesseract(function(err){
+      if(err){ reject(err); return; }
+      // Rulare OCR in limba romana + engleza (pentru numere/date)
+      Tesseract.recognize(canvas, 'ron+eng', {
+        logger: function(m){
+          if(m.status === 'recognizing text'){
+            var pct = Math.round(m.progress * 100);
+            var el = document.getElementById('scan-loading-text');
+            if(el) el.textContent = 'OCR: ' + pct + '%';
+          }
+        }
+      }).then(function(result){
+        var text = result.data.text || '';
+        var pvInfo = parsePVText(text);
+        console.log('[OCR] Text extras ('+text.length+' chars):', text.substring(0, 300));
+        console.log('[OCR] PV info detectat:', pvInfo);
+        resolve(pvInfo);
+      }).catch(function(e){ reject(e); });
+    });
+  });
+}
+
+// Parsare text OCR pentru nr PV + data
+function parsePVText(text){
+  var result = { nr: null, data: null };
+  if(!text) return result;
+  var upper = text.toUpperCase();
+  // Patterns pentru nr PV: "PV NR 12345", "PV. 12345", "NR. 12345", "PROCES-VERBAL 12345"
+  var pvPatterns = [
+    /(?:PV|PROCES[\s\-]*VERBAL)[\s\.\:\-]*(?:NR[\s\.\:]*)?(\d{3,10})/i,
+    /NR[\s\.\:]+(\d{4,10})/i,
+    /SERIA\s+[A-Z]+\s+NR[\.\s]+(\d{4,10})/i
+  ];
+  for(var i=0;i<pvPatterns.length;i++){
+    var m = upper.match(pvPatterns[i]);
+    if(m && m[1]){ result.nr = m[1]; break; }
+  }
+  // Patterns pentru data: DD.MM.YYYY, DD/MM/YYYY, DD-MM-YYYY, DD MM YYYY
+  var dataPatterns = [
+    /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/,
+    /(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{2})(?!\d)/,
+    /DATA[\s\.\:]+(\d{1,2}[\.\/\-]\d{1,2}[\.\/\-]\d{2,4})/i
+  ];
+  for(var j=0;j<dataPatterns.length;j++){
+    var dm = text.match(dataPatterns[j]);
+    if(dm){
+      if(dm.length === 4){
+        var day = dm[1].padStart(2,'0'), mon = dm[2].padStart(2,'0'), yr = dm[3];
+        if(yr.length === 2) yr = '20' + yr;
+        // Validare: zi 1-31, luna 1-12
+        if(parseInt(day) >= 1 && parseInt(day) <= 31 && parseInt(mon) >= 1 && parseInt(mon) <= 12){
+          result.data = day + '.' + mon + '.' + yr;
+          break;
+        }
+      } else if(dm[1]){
+        result.data = dm[1].replace(/[\/\-]/g, '.');
+        break;
+      }
+    }
+  }
+  return result;
 }
 
 function closeScanner(){
@@ -2005,10 +2172,28 @@ function finishScan(format){
   var ts = timestamp.getFullYear() + ('0'+(timestamp.getMonth()+1)).slice(-2) + ('0'+timestamp.getDate()).slice(-2) + '_' + ('0'+timestamp.getHours()).slice(-2) + ('0'+timestamp.getMinutes()).slice(-2);
   var baseName = 'PV_' + t + '_' + ts;
 
-  // Show upload progress
   var loading = document.getElementById('scan-loading');
   loading.classList.add('on');
-  document.getElementById('scan-loading-text').textContent = 'Se salvează...';
+  document.getElementById('scan-loading-text').textContent = 'Se analizează PV cu OCR...';
+
+  // OCR pe prima pagina pentru nr PV + data (Tesseract.js local, fara server)
+  extractPVInfo(scanPages[0].canvas).then(function(pvInfo){
+    // Salveaza pe ticket pentru includere in WA
+    if(currentScanTicket && (pvInfo.nr || pvInfo.data)){
+      currentScanTicket._pv_info = pvInfo;
+      var ticketInData = DATA.find(function(x){ return s(x.t) === t; });
+      if(ticketInData) ticketInData._pv_info = pvInfo;
+    }
+    document.getElementById('scan-loading-text').textContent = 'Se salvează...';
+    performUpload(format, t, baseName, loading, pvInfo);
+  }).catch(function(e){
+    console.warn('OCR failed:', e);
+    document.getElementById('scan-loading-text').textContent = 'Se salvează...';
+    performUpload(format, t, baseName, loading, null);
+  });
+}
+
+function performUpload(format, t, baseName, loading, pvInfo){
 
   var uploads = [];
   if(format === 'pdf'){
@@ -2031,10 +2216,14 @@ function finishScan(format){
           size: blob.size,
           type: 'pdf',
           pages: scanPages.length,
-          uploaded_at: Date.now()
+          uploaded_at: Date.now(),
+          pv_info: pvInfo || null
         });
+        // Salveaza PV info si separat pentru acces usor
+        if(pvInfo && (pvInfo.nr || pvInfo.data)) savePVInfoToFirebase(t, pvInfo);
         loading.classList.remove('on');
         closeScanner();
+        showPVDetectedToast(pvInfo);
       }).catch(function(err){
         loading.classList.remove('on');
         alert('Eroare upload: '+err);
@@ -2046,10 +2235,10 @@ function finishScan(format){
       if(i >= scanPages.length){
         loading.classList.remove('on');
         closeScanner();
+        showPVDetectedToast(pvInfo);
         return;
       }
       var pageName = baseName + (scanPages.length > 1 ? '_p'+(i+1) : '') + '.jpg';
-      // Convert dataUrl to blob
       var dataUrl = scanPages[i].dataUrl;
       fetch(dataUrl).then(function(r){ return r.blob(); }).then(function(blob){
         return uploadToCloudinary(blob, pageName);
@@ -2060,8 +2249,10 @@ function finishScan(format){
           name: pageName,
           size: res.bytes,
           type: 'jpg',
-          uploaded_at: Date.now()
+          uploaded_at: Date.now(),
+          pv_info: (i === 0 ? (pvInfo || null) : null)
         });
+        if(i === 0 && pvInfo && (pvInfo.nr || pvInfo.data)) savePVInfoToFirebase(t, pvInfo);
         uploadNext(i+1);
       }).catch(function(err){
         loading.classList.remove('on');
@@ -2070,6 +2261,29 @@ function finishScan(format){
     };
     uploadNext(0);
   }
+}
+
+function savePVInfoToFirebase(ticketNumber, pvInfo){
+  if(!SHARE_CODE) return;
+  var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/pv_info.json';
+  var xhr = new XMLHttpRequest();
+  xhr.open('PATCH', url, true);
+  xhr.setRequestHeader('Content-Type', 'application/json');
+  var payload = {};
+  payload[ticketNumber] = pvInfo;
+  xhr.send(JSON.stringify(payload));
+}
+
+function showPVDetectedToast(pvInfo){
+  if(!pvInfo || (!pvInfo.nr && !pvInfo.data)) return;
+  var el = document.createElement('div');
+  var txt = '📋 PV detectat: ';
+  if(pvInfo.nr) txt += 'Nr. ' + pvInfo.nr;
+  if(pvInfo.data) txt += (pvInfo.nr ? ' · ' : '') + pvInfo.data;
+  el.textContent = txt;
+  el.style.cssText = 'position:fixed;bottom:30px;left:50%;transform:translateX(-50%);background:#4caf50;color:#fff;padding:12px 24px;border-radius:100px;font-weight:600;z-index:1000;box-shadow:0 4px 12px rgba(0,0,0,.3);font-size:14px';
+  document.body.appendChild(el);
+  setTimeout(function(){ el.remove(); }, 5000);
 }
 
 // Afiseaza documentele salvate in modal
