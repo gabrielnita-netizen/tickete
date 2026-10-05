@@ -818,24 +818,18 @@ function markRezolvat(idx){
 function buildWAMessage(r, docs){
   var ora = new Date().toLocaleString('ro-RO');
   var msg;
-  var obLine = s(r.ob) ? '\nObiectiv: '+s(r.ob) : '';
+  var obVal = s(r.ob) || '-';
   if(r._nerezolvat){
-    msg = '\u26A0\uFE0F *TICKET NEREZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+obLine+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nStatus: NEREZOLVAT la '+ora;
+    msg = '\u26A0\uFE0F *TICKET NEREZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nObiectiv: '+obVal+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nStatus: NEREZOLVAT la '+ora;
   } else {
-    msg = '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+obLine+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
-  }
-  // Date PV extrase prin OCR - format: "PV nr 353106/ 01.10.2026"
-  if(r._pv_info){
-    var pv = r._pv_info;
-    if(pv.nr || pv.data){
-      var pvLine = '\n\n📋 PV';
-      if(pv.nr) pvLine += ' nr ' + pv.nr;
-      if(pv.data) pvLine += '/ ' + pv.data;
-      msg += pvLine;
-    }
+    msg = '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nObiectiv: '+obVal+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
   }
   if(docs && docs.length > 0){
+    var pv = r._pv_info || {};
+    var pvNr = pv.nr || '-';
+    var pvData = pv.data || '-';
     msg += '\n\n📎 *Documente atașate:*';
+    msg += '\nPV NR.'+pvNr+'/ '+pvData;
     for(var i=0;i<docs.length;i++){
       msg += '\n' + (i+1) + '. ' + docs[i].name + '\n' + docs[i].url;
     }
