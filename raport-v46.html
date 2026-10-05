@@ -2088,36 +2088,33 @@ function extractPVInfo(canvas){
       }).then(function(result){
         var text = result.data.text || '';
         var pvInfo = parsePVText(text);
+        pvInfo._raw_text = text.substring(0, 1000);
         console.log('[OCR] Text extras ('+text.length+' chars):', text);
         console.log('[OCR] PV info detectat:', pvInfo);
-        if(text.length < 20){
-          showOCRStatus('⚠️ OCR: prea puțin text citit ('+text.length+' chars). Completează manual din modal.', 'warn');
-        } else if(!pvInfo.nr && !pvInfo.data){
-          showOCRStatus('⚠️ OCR a citit '+text.length+' caractere dar nu a găsit nr PV / data. Completează manual.', 'warn');
-        } else {
-          var found = [];
-          if(pvInfo.nr) found.push('nr '+pvInfo.nr);
-          if(pvInfo.data) found.push(pvInfo.data);
-          showOCRStatus('✓ PV detectat: '+found.join(' / '), 'ok');
-        }
         resolve(pvInfo);
       }).catch(function(e){
-        showOCRStatus('❌ OCR a eșuat: '+e.message, 'err');
         reject(e);
       });
     });
   });
 }
 
-// Toast vizual persistent pentru OCR status (nu doar success)
+// Toast persistent cu status OCR
 function showOCRStatus(msg, type){
   var bg = type === 'err' ? '#e53935' : (type === 'warn' ? '#ff9800' : '#4caf50');
+  // Șterge eventualele toast-uri OCR precedente
+  var oldToasts = document.querySelectorAll('.ocr-status-toast');
+  oldToasts.forEach(function(x){ x.remove(); });
   var el = document.createElement('div');
-  el.textContent = msg;
-  el.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:12px 20px;border-radius:12px;font-weight:600;z-index:1100;box-shadow:0 4px 16px rgba(0,0,0,.4);font-size:13px;max-width:90vw;text-align:center;line-height:1.4';
+  el.className = 'ocr-status-toast';
+  el.innerHTML = msg + '<div style="font-size:10px;margin-top:4px;opacity:.8">(apasă pentru închidere)</div>';
+  el.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:14px 22px;border-radius:12px;font-weight:600;z-index:1100;box-shadow:0 4px 16px rgba(0,0,0,.4);font-size:13px;max-width:92vw;text-align:center;line-height:1.4;cursor:pointer';
+  el.onclick = function(){ el.remove(); };
   document.body.appendChild(el);
-  setTimeout(function(){ el.style.opacity='0'; el.style.transition='opacity .5s'; }, 7000);
-  setTimeout(function(){ el.remove(); }, 7500);
+  setTimeout(function(){
+    if(el.parentNode){ el.style.opacity='0'; el.style.transition='opacity .8s'; }
+  }, 15000);
+  setTimeout(function(){ if(el.parentNode) el.remove(); }, 16000);
 }
 
 // Parsare text OCR pentru PV - foarte permisiv pentru greseli OCR tipice
@@ -2251,10 +2248,11 @@ function finishScan(format){
   loading.classList.add('on');
   document.getElementById('scan-loading-text').textContent = 'Se analizează PV cu OCR...';
 
-  // OCR pe prima pagina pentru nr PV + data (Tesseract.js local, fara server)
-  extractPVInfo(scanPages[0].canvas).then(function(pvInfo){
-    // Salveaza pe ticket pentru includere in WA
-    if(currentScanTicket && (pvInfo.nr || pvInfo.data)){
+  // OCR pe TOATE paginile scanate (combinate), nu doar prima
+  extractPVInfoFromAllPages(scanPages).then(function(ocrResult){
+    var pvInfo = ocrResult.pvInfo;
+    pvInfo._raw_text = (ocrResult.text || '').substring(0, 1000);
+    if(currentScanTicket){
       currentScanTicket._pv_info = pvInfo;
       var ticketInData = DATA.find(function(x){ return s(x.t) === t; });
       if(ticketInData) ticketInData._pv_info = pvInfo;
@@ -2263,8 +2261,52 @@ function finishScan(format){
     performUpload(format, t, baseName, loading, pvInfo);
   }).catch(function(e){
     console.warn('OCR failed:', e);
+    showOCRStatus('❌ OCR eșuat: '+e.message+'. Completează manual din modal.', 'err');
     document.getElementById('scan-loading-text').textContent = 'Se salvează...';
     performUpload(format, t, baseName, loading, null);
+  });
+}
+
+function extractPVInfoFromAllPages(pages){
+  return new Promise(function(resolve, reject){
+    var combinedText = '';
+    var combinedPV = { nr: null, data: null, seria: null };
+    var pageIdx = 0;
+    var totalChars = 0;
+    function processNext(){
+      if(pageIdx >= pages.length){
+        // Afișez status final combinat
+        if(totalChars < 20){
+          showOCRStatus('⚠️ OCR: prea puțin text citit ('+totalChars+' chars în '+pages.length+' pag). Imagine blurată?', 'warn');
+        } else if(!combinedPV.nr && !combinedPV.data){
+          showOCRStatus('⚠️ OCR a citit '+totalChars+' caractere dar nu a găsit nr PV/data. Vezi modal → butonul 🔍 Text OCR.', 'warn');
+        } else {
+          var found = [];
+          if(combinedPV.nr) found.push('nr '+combinedPV.nr);
+          if(combinedPV.data) found.push(combinedPV.data);
+          showOCRStatus('✓ PV detectat: '+found.join(' / '), 'ok');
+        }
+        resolve({ pvInfo: combinedPV, text: combinedText });
+        return;
+      }
+      var el = document.getElementById('scan-loading-text');
+      if(el) el.textContent = 'OCR pagina '+(pageIdx+1)+'/'+pages.length+'...';
+      extractPVInfo(pages[pageIdx].canvas).then(function(pvInfo){
+        var pageText = pvInfo._raw_text || '';
+        totalChars += pageText.length;
+        combinedText += '\n--- PAGINA '+(pageIdx+1)+' ---\n' + pageText;
+        if(pvInfo.nr && !combinedPV.nr) combinedPV.nr = pvInfo.nr;
+        if(pvInfo.data && !combinedPV.data) combinedPV.data = pvInfo.data;
+        if(pvInfo.seria && !combinedPV.seria) combinedPV.seria = pvInfo.seria;
+        pageIdx++;
+        processNext();
+      }).catch(function(e){
+        console.warn('OCR failed on page '+(pageIdx+1), e);
+        pageIdx++;
+        processNext();
+      });
+    }
+    processNext();
   });
 }
 
@@ -2295,7 +2337,8 @@ function performUpload(format, t, baseName, loading, pvInfo){
           pv_info: pvInfo || null
         });
         // Salveaza PV info si separat pentru acces usor
-        if(pvInfo && (pvInfo.nr || pvInfo.data)) savePVInfoToFirebase(t, pvInfo);
+        // Salvez pvInfo chiar daca e gol (ca sa persiste _raw_text pentru debug)
+        if(pvInfo) savePVInfoToFirebase(t, pvInfo);
         loading.classList.remove('on');
         closeScanner();
         showPVDetectedToast(pvInfo);
@@ -2329,7 +2372,7 @@ function performUpload(format, t, baseName, loading, pvInfo){
           uploaded_at: Date.now(),
           pv_info: (i === 0 ? (pvInfo || null) : null)
         });
-        if(i === 0 && pvInfo && (pvInfo.nr || pvInfo.data)) savePVInfoToFirebase(t, pvInfo);
+        if(i === 0 && pvInfo) savePVInfoToFirebase(t, pvInfo);
         uploadNext(i+1);
       }).catch(function(err){
         loading.classList.remove('on');
@@ -2369,15 +2412,36 @@ function renderPanelPVInfo(ticketNumber){
   if(!el) return;
   var r = DATA.find(function(x){ return s(x.t) === ticketNumber; });
   if(!r){ el.style.display = 'none'; return; }
-  var pv = r._pv_info;
-  var hasPV = pv && (pv.nr || pv.data);
-  var txt = hasPV ? ('📋 PV' + (pv.nr?' nr '+pv.nr:'') + (pv.data?'/ '+pv.data:'')) : '📋 PV nedetectat';
-  el.style.display = 'flex';
-  el.style.alignItems = 'center';
-  el.style.justifyContent = 'space-between';
-  el.style.gap = '10px';
-  el.innerHTML = '<span style="flex:1;font-weight:600;color:'+(hasPV?'#4caf50':'#999')+'">'+txt+'</span>'+
-    '<button onclick="editPVInfo(\''+ticketNumber+'\')" style="background:#4a90e2;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600">✏️ '+(hasPV?'Editează':'Adaugă')+'</button>';
+  var pv = r._pv_info || {};
+  var hasPV = pv.nr || pv.data;
+  var hasRawText = pv._raw_text && pv._raw_text.length > 10;
+  // Culori diferite daca lipseste
+  var bgColor = hasPV ? 'rgba(76,175,80,.1)' : 'rgba(255,152,0,.15)';
+  var borderColor = hasPV ? 'rgba(76,175,80,.3)' : 'rgba(255,152,0,.5)';
+  var textColor = hasPV ? '#4caf50' : '#ff9800';
+  var txt = hasPV ? ('📋 PV NR.' + (pv.nr||'-') + '/ ' + (pv.data||'-')) : '⚠️ PV nedetectat — completează manual';
+  el.style.cssText = 'display:block;margin-top:12px;padding:12px 14px;background:'+bgColor+';border:1px solid '+borderColor+';border-radius:10px;font-size:14px';
+  var html = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap">'+
+    '<span style="font-weight:700;color:'+textColor+'">'+txt+'</span>'+
+    '<div style="display:flex;gap:6px">'+
+      (hasRawText ? '<button onclick="toggleOCRText(\''+ticketNumber+'\')" style="background:transparent;color:var(--t2);border:1px solid var(--br);border-radius:8px;padding:5px 10px;font-size:11px;cursor:pointer;font-weight:600">🔍 Text OCR</button>' : '')+
+      '<button onclick="editPVInfo(\''+ticketNumber+'\')" style="background:#4a90e2;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600">✏️ '+(hasPV?'Editează':'Adaugă')+'</button>'+
+    '</div>'+
+  '</div>';
+  if(hasRawText){
+    html += '<div id="pan-ocr-raw-'+ticketNumber+'" style="display:none;margin-top:10px;padding:10px;background:rgba(0,0,0,.3);color:#ccc;border-radius:6px;font-family:monospace;font-size:11px;max-height:200px;overflow-y:auto;white-space:pre-wrap;line-height:1.4"></div>';
+  }
+  el.innerHTML = html;
+  if(hasRawText){
+    var rawEl = document.getElementById('pan-ocr-raw-'+ticketNumber);
+    if(rawEl) rawEl.textContent = pv._raw_text;
+  }
+}
+
+function toggleOCRText(ticketNumber){
+  var el = document.getElementById('pan-ocr-raw-'+ticketNumber);
+  if(!el) return;
+  el.style.display = (el.style.display === 'none' || !el.style.display) ? 'block' : 'none';
 }
 
 function editPVInfo(ticketNumber){
