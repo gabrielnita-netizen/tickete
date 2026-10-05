@@ -225,7 +225,7 @@ tr.nerezolvat td:first-child{border-left:3px solid #FF9800}
 .scan-title{font-size:16px;font-weight:700;letter-spacing:-.2px}
 .scan-pages-btn{background:var(--tx);color:var(--bg);border:none;border-radius:100px;padding:8px 16px;font-size:13px;font-weight:700;cursor:pointer;min-width:56px}
 .scan-body{flex:1;position:relative;overflow:hidden;background:#000;display:flex;align-items:center;justify-content:center;min-height:0}
-#scan-video{width:100%;height:100%;object-fit:contain;display:block;background:#000}
+#scan-video{width:100%;height:100%;object-fit:cover;display:block;background:#000}
 #scan-overlay{position:absolute;top:0;left:0;pointer-events:none}
 .scan-error{position:absolute;top:0;left:0;width:100%;height:100%;background:#000;color:#fff;display:none;align-items:center;justify-content:center;flex-direction:column;gap:16px;font-size:15px;padding:20px;text-align:center;z-index:6}
 .scan-error.on{display:flex}
@@ -389,6 +389,7 @@ button{padding:10px 18px;border:none;border-radius:100px;background:var(--su);co
         Scan document
       </button>
       <div class="pan-docs" id="pan-docs"></div>
+      <div id="pan-pv-info" style="display:none;margin-top:12px;padding:10px 14px;background:rgba(76,175,80,.1);border:1px solid rgba(76,175,80,.3);border-radius:10px;font-size:14px"></div>
     </div>
     <div class="pb" id="pbody"></div>
   </div>
@@ -702,6 +703,7 @@ function openPanel(i, clickX, clickY){
   document.getElementById('ptitle').textContent = 'Ticket #' + s(r.t);
   updatePanelButtons();
   renderPanelDocs(s(r.t));
+  renderPanelPVInfo(s(r.t));
   var fields = [['Account',r.a,false],['Beneficiar',r.b,false],['Obiectiv',r.ob,false],['Localitate',r.l,false],['Adresă',r.ad,false],['Județ',r.j,false],['Tip',r.ty,true],['Notă',r.n,false],['Inițiere',fmtDate(r.d),false],['Programată',fmtDate(r.dp),false]];
   var html = '';
   // Contacte manuale (introduse din manager) - READ-ONLY, doar apelabile
@@ -2043,12 +2045,44 @@ function loadTesseract(cb){
   document.head.appendChild(s);
 }
 
+// Preprocesare agresivă pentru OCR: grayscale + boost contrast + binarizare
+function preprocessForOCR(sourceCanvas){
+  var scale = 2.5;
+  var w = Math.round(sourceCanvas.width * scale);
+  var h = Math.round(sourceCanvas.height * scale);
+  var c = document.createElement('canvas');
+  c.width = w; c.height = h;
+  var ctx = c.getContext('2d');
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(sourceCanvas, 0, 0, w, h);
+  try {
+    var img = ctx.getImageData(0, 0, w, h);
+    var d = img.data;
+    // Convert to grayscale + boost contrast (sigmoid)
+    for(var i=0; i<d.length; i+=4){
+      var gray = 0.299*d[i] + 0.587*d[i+1] + 0.114*d[i+2];
+      // Boost contrast: dacă > 150 → mai alb, dacă < 100 → mai negru
+      if(gray > 180) gray = 255;
+      else if(gray < 90) gray = 0;
+      else gray = Math.round((gray - 90) * 255 / 90); // stretch intervalul 90-180 la 0-255
+      d[i] = d[i+1] = d[i+2] = gray;
+    }
+    ctx.putImageData(img, 0, 0);
+  } catch(e){ console.warn('Preprocesare canvas failed:', e); }
+  return c;
+}
+
 function extractPVInfo(canvas){
   return new Promise(function(resolve, reject){
     loadTesseract(function(err){
-      if(err){ reject(err); return; }
-      // Rulare OCR in limba romana + engleza (pentru numere/date)
-      Tesseract.recognize(canvas, 'ron+eng', {
+      if(err){
+        showOCRStatus('❌ OCR nu s-a încărcat (verifică internet)', 'err');
+        reject(err); return;
+      }
+      // Preprocesare agresivă: upscale 2.5x + grayscale + binarizare contrast
+      var processedCanvas = preprocessForOCR(canvas);
+      Tesseract.recognize(processedCanvas, 'ron+eng', {
         logger: function(m){
           if(m.status === 'recognizing text'){
             var pct = Math.round(m.progress * 100);
@@ -2059,53 +2093,89 @@ function extractPVInfo(canvas){
       }).then(function(result){
         var text = result.data.text || '';
         var pvInfo = parsePVText(text);
-        console.log('[OCR] Text extras ('+text.length+' chars):', text.substring(0, 300));
+        console.log('[OCR] Text extras ('+text.length+' chars):', text);
         console.log('[OCR] PV info detectat:', pvInfo);
+        if(text.length < 20){
+          showOCRStatus('⚠️ OCR: prea puțin text citit ('+text.length+' chars). Completează manual din modal.', 'warn');
+        } else if(!pvInfo.nr && !pvInfo.data){
+          showOCRStatus('⚠️ OCR a citit '+text.length+' caractere dar nu a găsit nr PV / data. Completează manual.', 'warn');
+        } else {
+          var found = [];
+          if(pvInfo.nr) found.push('nr '+pvInfo.nr);
+          if(pvInfo.data) found.push(pvInfo.data);
+          showOCRStatus('✓ PV detectat: '+found.join(' / '), 'ok');
+        }
         resolve(pvInfo);
-      }).catch(function(e){ reject(e); });
+      }).catch(function(e){
+        showOCRStatus('❌ OCR a eșuat: '+e.message, 'err');
+        reject(e);
+      });
     });
   });
 }
 
-// Parsare text OCR pentru PV: "Seria TH nr. 353106" + data "01.10.2026"
+// Toast vizual persistent pentru OCR status (nu doar success)
+function showOCRStatus(msg, type){
+  var bg = type === 'err' ? '#e53935' : (type === 'warn' ? '#ff9800' : '#4caf50');
+  var el = document.createElement('div');
+  el.textContent = msg;
+  el.style.cssText = 'position:fixed;top:20px;left:50%;transform:translateX(-50%);background:'+bg+';color:#fff;padding:12px 20px;border-radius:12px;font-weight:600;z-index:1100;box-shadow:0 4px 16px rgba(0,0,0,.4);font-size:13px;max-width:90vw;text-align:center;line-height:1.4';
+  document.body.appendChild(el);
+  setTimeout(function(){ el.style.opacity='0'; el.style.transition='opacity .5s'; }, 7000);
+  setTimeout(function(){ el.remove(); }, 7500);
+}
+
+// Parsare text OCR pentru PV - foarte permisiv pentru greseli OCR tipice
 function parsePVText(text){
   var result = { seria: null, nr: null, data: null };
   if(!text) return result;
-  // Normalizare: convert multiline → single-line pentru patterns peste linii
   var normalized = text.replace(/\n/g, ' ').replace(/\s+/g, ' ');
-  // Pattern principal: "Seria <LITERE> nr. <CIFRE>" (ex: "Seria TH nr. 353106")
-  var seriaNrPattern = /SERIA\s+([A-Z]{1,4})\s*(?:NR[\s\.\:]*|\.)?\s*(\d{4,10})/i;
-  var m = normalized.match(seriaNrPattern);
-  if(m){
-    result.seria = m[1].toUpperCase();
-    result.nr = m[2];
-  } else {
-    // Fallback: cauta separat Seria si Nr daca sunt departe
-    var seriaM = normalized.match(/SERIA\s+([A-Z]{1,4})(?:\s|,|\.|$)/i);
-    if(seriaM) result.seria = seriaM[1].toUpperCase();
-    var nrPatterns = [
-      /(?:PV|PROCES[\s\-]*VERBAL)[\s\.\:\-]+(?:NR[\s\.\:]*)?(\d{4,10})/i,
-      /NR[\s\.\:]+(\d{4,10})/i
-    ];
-    for(var i=0;i<nrPatterns.length;i++){
-      var nm = normalized.match(nrPatterns[i]);
-      if(nm && nm[1]){ result.nr = nm[1]; break; }
+  // Nr PV - cautat prin mai multe strategii (6 patterns)
+  var nrPatterns = [
+    // "Seria TH nr. 353106"
+    /SERIA\s*([A-Z]{1,4})\s*(?:NR[\s\.\:]*|[\.,])?\s*(\d{5,10})/i,
+    // "nr. 353106", "nr 353106", "no. 353106"
+    /(?:NR|N[\.\s]*R|NO|N[°º])[\s\.\:]*(\d{5,10})/i,
+    // "Proces verbal 353106"
+    /(?:PV|PROCES[\s\-]*VERBAL)[\s\.\:\-]+(?:NR[\s\.\:]*)?(\d{5,10})/i,
+    // Fallback: orice secventa de 6 cifre izolate (nr PV tipice au 6)
+    /(?:^|[^\d])(\d{6})(?:[^\d]|$)/
+  ];
+  for(var i=0;i<nrPatterns.length;i++){
+    var m = normalized.match(nrPatterns[i]);
+    if(m){
+      if(m.length === 3){ // seria + nr
+        result.seria = m[1].toUpperCase();
+        result.nr = m[2];
+      } else {
+        result.nr = m[1];
+      }
+      break;
     }
   }
-  // Pattern pentru data: DD.MM.YYYY sau DD/MM/YYYY sau DD-MM-YYYY
-  // Prioritate: cu "din" sau "Data" inainte
+  // Seria separata daca n-am gasit cu numarul
+  if(!result.seria){
+    var seriaM = normalized.match(/SERIA\s*([A-Z]{1,4})\b/i);
+    if(seriaM) result.seria = seriaM[1].toUpperCase();
+  }
+  // Data - mai multe strategii
   var dataPatterns = [
-    /DIN\s+(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/i,
-    /DATA[\s\.\:]+(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/i,
+    // "din 01.10.2026", "data: 01.10.2026"
+    /(?:DIN|DATA|ÎN|IN)[\s\.\:]+(\d{1,2})[\.\/\-\s](\d{1,2})[\.\/\-\s](\d{4})/i,
+    // "01.10.2026" oriunde
     /(\d{1,2})[\.\/\-](\d{1,2})[\.\/\-](\d{4})/,
-    /(\d{1,2})[\.\/\-](\d{1,2})[\.\/\-](\d{2})(?!\d)/
+    // "01.10.26" (ani 2 cifre)
+    /(\d{1,2})[\.\/\-](\d{1,2})[\.\/\-](\d{2})(?!\d)/,
+    // "01 10 2026" (cu spatii)
+    /(?:^|\s)(\d{1,2})\s+(\d{1,2})\s+(\d{4})(?:$|\s)/
   ];
   for(var j=0;j<dataPatterns.length;j++){
     var dm = normalized.match(dataPatterns[j]);
     if(dm && dm.length >= 4){
       var day = dm[1].padStart(2,'0'), mon = dm[2].padStart(2,'0'), yr = dm[3];
       if(yr.length === 2) yr = '20' + yr;
-      if(parseInt(day) >= 1 && parseInt(day) <= 31 && parseInt(mon) >= 1 && parseInt(mon) <= 12){
+      var dayN = parseInt(day), monN = parseInt(mon), yrN = parseInt(yr);
+      if(dayN >= 1 && dayN <= 31 && monN >= 1 && monN <= 12 && yrN >= 2020 && yrN <= 2099){
         result.data = day + '.' + mon + '.' + yr;
         break;
       }
@@ -2234,6 +2304,7 @@ function performUpload(format, t, baseName, loading, pvInfo){
         loading.classList.remove('on');
         closeScanner();
         showPVDetectedToast(pvInfo);
+        renderPanelPVInfo(t);
       }).catch(function(err){
         loading.classList.remove('on');
         alert('Eroare upload: '+err);
@@ -2246,6 +2317,7 @@ function performUpload(format, t, baseName, loading, pvInfo){
         loading.classList.remove('on');
         closeScanner();
         showPVDetectedToast(pvInfo);
+        renderPanelPVInfo(t);
         return;
       }
       var pageName = baseName + (scanPages.length > 1 ? '_p'+(i+1) : '') + '.jpg';
@@ -2297,6 +2369,52 @@ function showPVDetectedToast(pvInfo){
 }
 
 // Afiseaza documentele salvate in modal
+function renderPanelPVInfo(ticketNumber){
+  var el = document.getElementById('pan-pv-info');
+  if(!el) return;
+  var r = DATA.find(function(x){ return s(x.t) === ticketNumber; });
+  if(!r){ el.style.display = 'none'; return; }
+  var pv = r._pv_info;
+  var hasPV = pv && (pv.nr || pv.data);
+  var txt = hasPV ? ('📋 PV' + (pv.nr?' nr '+pv.nr:'') + (pv.data?'/ '+pv.data:'')) : '📋 PV nedetectat';
+  el.style.display = 'flex';
+  el.style.alignItems = 'center';
+  el.style.justifyContent = 'space-between';
+  el.style.gap = '10px';
+  el.innerHTML = '<span style="flex:1;font-weight:600;color:'+(hasPV?'#4caf50':'#999')+'">'+txt+'</span>'+
+    '<button onclick="editPVInfo(\''+ticketNumber+'\')" style="background:#4a90e2;color:#fff;border:none;border-radius:8px;padding:6px 12px;font-size:12px;cursor:pointer;font-weight:600">✏️ '+(hasPV?'Editează':'Adaugă')+'</button>';
+}
+
+function editPVInfo(ticketNumber){
+  var r = DATA.find(function(x){ return s(x.t) === ticketNumber; });
+  if(!r) return;
+  var pv = r._pv_info || {};
+  var curNr = pv.nr || '';
+  var curData = pv.data || '';
+  var newNr = prompt('Număr PV (ex: 353106):', curNr);
+  if(newNr === null) return;
+  var newData = prompt('Data PV (ex: 01.10.2026):', curData || new Date().toLocaleDateString('ro-RO'));
+  if(newData === null) return;
+  var pvInfo = {
+    nr: newNr.trim() || null,
+    data: newData.trim() || null,
+    seria: pv.seria || null
+  };
+  r._pv_info = pvInfo;
+  // Save to Firebase
+  if(SHARE_CODE){
+    var url = FIREBASE_URL + '/t/' + encodeURIComponent(SHARE_CODE) + '/pv_info.json';
+    var xhr = new XMLHttpRequest();
+    xhr.open('PATCH', url, true);
+    xhr.setRequestHeader('Content-Type', 'application/json');
+    var payload = {};
+    payload[ticketNumber] = pvInfo;
+    xhr.send(JSON.stringify(payload));
+  }
+  renderPanelPVInfo(ticketNumber);
+  showOCRStatus('✓ PV salvat: ' + (pvInfo.nr?'nr '+pvInfo.nr:'') + (pvInfo.data?'/ '+pvInfo.data:''), 'ok');
+}
+
 function renderPanelDocs(ticketNumber){
   if(!SHARE_CODE) return;
   var container = document.getElementById('pan-docs');
