@@ -818,10 +818,11 @@ function markRezolvat(idx){
 function buildWAMessage(r, docs){
   var ora = new Date().toLocaleString('ro-RO');
   var msg;
+  var obLine = s(r.ob) ? '\nObiectiv: '+s(r.ob) : '';
   if(r._nerezolvat){
-    msg = '\u26A0\uFE0F *TICKET NEREZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nStatus: NEREZOLVAT la '+ora;
+    msg = '\u26A0\uFE0F *TICKET NEREZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+obLine+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nStatus: NEREZOLVAT la '+ora;
   } else {
-    msg = '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
+    msg = '\u2705 *TICKET REZOLVAT*\n\nTicket: '+s(r.t)+'\nAccount: '+s(r.a)+'\nBeneficiar: '+s(r.b)+obLine+'\nAdresa: '+s(r.ad)+', '+s(r.l)+'\nTip: '+s(r.ty)+'\nData programata: '+fmtDate(r.dp)+'\nRezolvat la: '+ora;
   }
   // Date PV extrase prin OCR - format: "PV nr 353106/ 01.10.2026"
   if(r._pv_info){
